@@ -22,7 +22,8 @@ Ou execute `docker compose up --build` e abra `http://localhost:8080/health`.
 | GET | `/health` | Saúde da aplicação/banco |
 | GET | `/tasks` | Lista tarefas |
 | POST | `/tasks` | Cria tarefa (`{"title":"..."}`) |
-| PATCH | `/tasks/<id>` | Atualiza conclusão (`{"done":true}`) |
+| PATCH | `/tasks/<id>` | Atualiza título e/ou conclusão (`{"title":"..."}`, `{"done":true}`) |
+| DELETE | `/tasks/<id>` | Remove tarefa (`204` se removida, `404` se inexistente) |
 
 Exemplos:
 ```bash
@@ -43,3 +44,9 @@ Leia [docs/CONFIGURACAO.md](docs/CONFIGURACAO.md).
 
 ## Segurança e limitações didáticas
 O deploy é simplificado: não há TLS, balanceamento, rollback automatizado nem alta disponibilidade. Não colocar dados reais na API e não usar este modelo sem endurecimento em produção. SSH a partir de runner hospedado exige planejamento de rede seguro; veja o guia. `docker` group equivale a privilégios elevados na EC2.
+
+
+## Integrantes do Grupo
+Gabriel Duarte - 22303292
+João Vitor Jardim Machado Pontes - 22307063
+Elter Rodrigues - 22309480

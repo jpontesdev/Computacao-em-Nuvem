@@ -4,6 +4,16 @@ from pathlib import Path
 from flask import Flask, jsonify, request
 
 DB_PATH = os.environ.get("DB_PATH", "/tmp/cloud_tasks.db")
+TITLE_MAX_LENGTH = 120
+
+
+def validate_title(value):
+    if not isinstance(value, str) or not value.strip():
+        return None, "title deve ser texto nao vazio"
+    title = value.strip()
+    if len(title) > TITLE_MAX_LENGTH:
+        return None, f"title excede {TITLE_MAX_LENGTH} caracteres"
+    return title, None
 
 
 def create_app(test_config=None):
@@ -45,11 +55,9 @@ def create_app(test_config=None):
     @app.post("/tasks")
     def create_task():
         data = request.get_json(silent=True)
-        if not isinstance(data, dict) or not isinstance(data.get("title"), str) or not data["title"].strip():
-            return jsonify(error="title deve ser texto nao vazio"), 400
-        title = data["title"].strip()
-        if len(title) > 120:
-            return jsonify(error="title excede 120 caracteres"), 400
+        title, error = validate_title(data.get("title") if isinstance(data, dict) else None)
+        if error:
+            return jsonify(error=error), 400
         with connect() as db:
             cursor = db.execute("INSERT INTO tasks(title) VALUES (?)", (title,))
             db.commit()
@@ -59,14 +67,35 @@ def create_app(test_config=None):
     @app.patch("/tasks/<int:task_id>")
     def update_task(task_id):
         data = request.get_json(silent=True)
-        if not isinstance(data, dict) or type(data.get("done")) is not bool:
-            return jsonify(error="done deve ser booleano"), 400
+        if not isinstance(data, dict) or not ("title" in data or "done" in data):
+            return jsonify(error="informe title e/ou done"), 400
+        fields = {}
+        if "title" in data:
+            title, error = validate_title(data["title"])
+            if error:
+                return jsonify(error=error), 400
+            fields["title"] = title
+        if "done" in data:
+            if type(data["done"]) is not bool:
+                return jsonify(error="done deve ser booleano"), 400
+            fields["done"] = int(data["done"])
+        assignments = ", ".join(f"{column}=?" for column in fields)
         with connect() as db:
-            cursor = db.execute("UPDATE tasks SET done=? WHERE id=?", (int(data["done"]), task_id))
+            cursor = db.execute(f"UPDATE tasks SET {assignments} WHERE id=?", (*fields.values(), task_id))
+            db.commit()
+            if not cursor.rowcount:
+                return jsonify(error="tarefa nao encontrada"), 404
+            row = db.execute("SELECT id, title, done FROM tasks WHERE id=?", (task_id,)).fetchone()
+        return jsonify(id=row["id"], title=row["title"], done=bool(row["done"])), 200
+
+    @app.delete("/tasks/<int:task_id>")
+    def delete_task(task_id):
+        with connect() as db:
+            cursor = db.execute("DELETE FROM tasks WHERE id=?", (task_id,))
             db.commit()
         if not cursor.rowcount:
             return jsonify(error="tarefa nao encontrada"), 404
-        return jsonify(id=task_id, done=data["done"]), 200
+        return "", 204
 
     return app
 
