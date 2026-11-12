@@ -29,12 +29,12 @@
 
 ## 3. Infraestrutura AWS EC2 (Dias 4–5) — *Infraestrutura EC2, rede e segurança: 15 pts*
 
-- [ ] Provisionar instância EC2 Linux (Req. 2)
-- [ ] Instalar e validar Docker funcional na instância (Req. 2)
-- [ ] Configurar Security Group (Req. 2)
-  - [ ] Liberar porta HTTP necessária para acesso à aplicação
-  - [ ] Restringir acesso SSH — **não** utilizar `0.0.0.0/0` (Req. 6 / Regras)
-  - [ ] Aplicar a solução segura para runners de deploy orientada pelo professor / guia fornecido (Req. 6 / Regras)
+- [x] Provisionar instância EC2 Linux (Req. 2)
+- [x] Instalar e validar Docker funcional na instância (Req. 2)
+- [x] Configurar Security Group (Req. 2)
+  - [x] Liberar porta HTTP necessária para acesso à aplicação
+  - [x] Restringir acesso SSH — **não** utilizar `0.0.0.0/0` (Req. 6 / Regras)
+  - [x] Aplicar a solução segura para runners de deploy orientada pelo professor / guia fornecido (Req. 6 / Regras)
 - [ ] Documentar o Security Group (regras, portas e origens) (Req. 2)
 - [ ] Confirmar que a aplicação está acessível via HTTP (Req. 2)
 - [ ] Monitorar custos dos recursos AWS durante o trabalho (Regras)
