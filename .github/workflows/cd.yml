@@ -8,8 +8,13 @@ permissions:
   contents: read
 jobs:
   deploy:
-    # Only successful CI runs started by pushes to main.
-    if: ${{ github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.event == 'push' }}
+    # Only successful CI runs started by pushes to main, and only after the
+    # EC2 infrastructure and deploy secrets are ready. Deploy stays disabled
+    # (job skipped, not failed) until the repository variable DEPLOY_ENABLED
+    # is set to exactly 'true' (Settings > Secrets and variables > Actions >
+    # Variables). It must be a repository-level variable: environment
+    # variables are not available when this job-level `if` is evaluated.
+    if: ${{ vars.DEPLOY_ENABLED == 'true' && github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.event == 'push' }}
     runs-on: ubuntu-latest
     environment: production
     steps:
