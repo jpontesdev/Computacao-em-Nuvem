@@ -34,10 +34,10 @@
 - [x] Configurar Security Group (Req. 2)
   - [x] Liberar porta HTTP necessária para acesso à aplicação
   - [x] Restringir acesso SSH — **não** utilizar `0.0.0.0/0` (Req. 6 / Regras)
-  - [x] Aplicar a solução segura para runners de deploy orientada pelo professor / guia fornecido (Req. 6 / Regras)
-- [ ] Documentar o Security Group (regras, portas e origens) (Req. 2)
-- [ ] Confirmar que a aplicação está acessível via HTTP (Req. 2)
-- [ ] Monitorar custos dos recursos AWS durante o trabalho (Regras)
+  - [ ] Aplicar a solução segura para runners de deploy orientada pelo professor / guia fornecido (Req. 6 / Regras)
+- [x] Documentar o Security Group (regras, portas e origens) (Req. 2)
+- [x] Confirmar que a aplicação está acessível via HTTP (Req. 2)
+- [x] Monitorar custos dos recursos AWS durante o trabalho (Regras)
 
 ## 4. Integração Contínua — CI (Dias 6–7) — *Testes e CI funcionando nos PRs: 20 pts*
 
@@ -87,7 +87,7 @@
 - [ ] Relatório curto (máx. 4 páginas ou Markdown no repositório) contendo: — `docs/RELATORIO_FINAL.md` criado, com campos a preencher
   - [x] Diagrama da arquitetura/esteira
   - [x] Infraestrutura e portas utilizadas
-  - [ ] Registro de custos e recursos utilizados — estrutura pronta; depende da EC2
+  - [x] Registro de custos e recursos utilizados — estrutura pronta; depende da EC2
   - [x] Dificuldades encontradas
   - [ ] Evidências da persistência de dados — mecanismo descrito; evidência depende da EC2
   - [ ] Integrantes e distribuição das tarefas — campos criados; faltam nomes
