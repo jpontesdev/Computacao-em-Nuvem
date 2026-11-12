@@ -41,13 +41,13 @@
 
 ## 4. Integração Contínua — CI (Dias 6–7) — *Testes e CI funcionando nos PRs: 20 pts*
 
-- [ ] Criar workflow de CI no GitHub Actions (Req. 3)
-  - [ ] Etapa de instalação de dependências
-  - [ ] Etapa de execução do `pytest`
-  - [ ] Etapa de build da imagem Docker
-- [ ] Garantir que a CI execute em Pull Requests (Req. 3)
-- [ ] Garantir que execução em PR **não** publique imagem (Req. 3)
-- [ ] Garantir que execução em PR **não** dispare deploy (Req. 3)
+- [x] Criar workflow de CI no GitHub Actions (Req. 3) — `.github/workflows/ci.yml`
+  - [x] Etapa de instalação de dependências (com cache pip)
+  - [x] Etapa de execução do `pytest`
+  - [x] Etapa de build da imagem Docker (`push: false`, sem login)
+- [x] Garantir que a CI execute em Pull Requests (Req. 3)
+- [x] Garantir que execução em PR **não** publique imagem (Req. 3) — job `publish` com `if` restrito a push na `main`
+- [x] Garantir que execução em PR **não** dispare deploy (Req. 3) — CD só roda após CI de `push` na `main`
 - [ ] Abrir ao menos 1 Pull Request da branch `feature/...` para `main` (Req. 8)
 - [ ] Realizar revisão do PR (própria, se trabalho individual) (Req. 8)
 - [ ] Comprovar CI aprovada no PR (Req. 8)
