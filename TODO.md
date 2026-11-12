@@ -63,18 +63,19 @@
 ## 6. Entrega Contínua — CD (Dias 8–10) — *CD automático e verificação de saúde: 20 pts*
 
 - [ ] Configurar Secrets/Variables no GitHub (Req. 6)
-  - [ ] Não expor credenciais ou chaves no código
-  - [ ] Não expor credenciais ou chaves nos logs
-  - [ ] Não expor credenciais ou chaves no README
-- [ ] Criar workflow de CD no GitHub Actions (Req. 5)
-  - [ ] Condicionar a execução do CD ao sucesso da CI (Req. 5)
-  - [ ] Implantar na EC2 a imagem correspondente ao SHA do commit (Req. 5)
-  - [ ] Checar o endpoint `/health` após o deploy (Req. 5)
+  - [x] Não expor credenciais ou chaves no código — tudo via `secrets`/`vars`; `.gitignore` bloqueia `*.pem`/`*.key`
+  - [ ] Não expor credenciais ou chaves nos logs — workflow não ecoa secrets e apaga a chave ao final; confirmar no primeiro run real
+  - [x] Não expor credenciais ou chaves no README
+- [x] Criar workflow de CD no GitHub Actions (Req. 5) — `.github/workflows/cd.yml`, desativado até `DEPLOY_ENABLED=true`
+  - [x] Condicionar a execução do CD ao sucesso da CI (Req. 5) — `workflow_run` + `conclusion == success` + `event == push` na `main`
+  - [x] Implantar na EC2 a imagem correspondente ao SHA do commit (Req. 5) — `ghcr.io/<repo>:<head_sha>`; execução na EC2 pendente
+  - [x] Checar o endpoint `/health` após o deploy (Req. 5) — local no `deploy.sh` e externa no workflow, com tentativas e timeout limitados
+  - [x] Evitar deploys simultâneos e versões antigas sobrescrevendo novas — `concurrency` + checagem do topo da `main`
 - [ ] Realizar o primeiro deploy automatizado com sucesso
 
 ## 7. Validação e estabilização (Dias 11–12)
 
-- [ ] Corrigir problemas encontrados na esteira
+- [x] Corrigir problemas encontrados na esteira — auditoria sem AWS (timeouts, concorrência, chave SSH em `$RUNNER_TEMP`); revisar após o primeiro deploy
 - [ ] Demonstrar a implantação de uma nova versão pela esteira
 - [ ] Validar resposta do `/health` na EC2 após o deploy
 - [ ] Demonstrar que os dados persistem após a recriação do contêiner (Req. 9)
