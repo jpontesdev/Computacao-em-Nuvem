@@ -17,6 +17,7 @@ Em Settings > Secrets and variables > Actions configure:
 - Secret `EC2_SSH_KEY`: conteúdo integral da **chave privada SSH** autorizada na instância; nunca versionar.
 - Secret `EC2_KNOWN_HOSTS`: entrada SSH do host, validada contra a fingerprint confiável da instância (não confiar cegamente em ssh-keyscan).
 - Variable `EC2_USER`: `ubuntu` para a AMI Ubuntu sugerida.
+- Variable `DEPLOY_ENABLED` (nível de **repositório**, não de environment): o CD fica desativado (job `deploy` ignorado) até ela valer `true`. Crie-a só depois que EC2, Security Group, acesso do runner e os secrets acima estiverem prontos; para desativar, apague-a ou use `false`.
 Crie environment `production` para aprovações (se disponível).
 
 ## 4. Registry GHCR
