@@ -48,17 +48,17 @@
 - [x] Garantir que a CI execute em Pull Requests (Req. 3)
 - [x] Garantir que execução em PR **não** publique imagem (Req. 3) — job `publish` com `if` restrito a push na `main`
 - [x] Garantir que execução em PR **não** dispare deploy (Req. 3) — CD só roda após CI de `push` na `main`
-- [ ] Abrir ao menos 1 Pull Request da branch `feature/...` para `main` (Req. 8)
-- [ ] Realizar revisão do PR (própria, se trabalho individual) (Req. 8)
-- [ ] Comprovar CI aprovada no PR (Req. 8)
-- [ ] Fazer merge do PR na `main` (Req. 8)
+- [x] Abrir ao menos 1 Pull Request da branch `feature/...` para `main` (Req. 8)
+- [x] Realizar revisão do PR (própria, se trabalho individual) (Req. 8)
+- [x] Comprovar CI aprovada no PR (Req. 8)
+- [x] Fazer merge do PR na `main` (Req. 8)
 
 ## 5. Publicação de imagem no GHCR (Dias 8–10) — *Docker e publicação versionada: 15 pts*
 
-- [ ] Configurar publicação no GitHub Container Registry (Req. 4)
-- [ ] Versionar a imagem com o **SHA do commit** como tag (Req. 4)
-- [ ] Publicar a imagem **somente** quando mudanças entrarem na `main` (Req. 4)
-- [ ] Verificar no GHCR a imagem publicada com a tag correspondente ao SHA
+- [x] Configurar publicação no GitHub Container Registry (Req. 4)
+- [x] Versionar a imagem com o **SHA do commit** como tag (Req. 4)
+- [x] Publicar a imagem **somente** quando mudanças entrarem na `main` (Req. 4)
+- [x] Verificar no GHCR a imagem publicada com a tag correspondente ao SHA
 
 ## 6. Entrega Contínua — CD (Dias 8–10) — *CD automático e verificação de saúde: 20 pts*
 
