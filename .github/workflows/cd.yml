@@ -31,6 +31,7 @@ jobs:
 
     env:
       DEPLOY_SHA: ${{ github.event.workflow_run.head_sha }}
+      GH_TOKEN: ${{ github.token }}
 
     outputs:
       current: ${{ steps.freshness.outputs.current }}
@@ -42,33 +43,62 @@ jobs:
           ref: ${{ github.event.workflow_run.head_sha }}
           persist-credentials: false
 
-      - name: Skip if a newer commit is already on main
+      - name: Check deployment freshness
         id: freshness
         shell: bash
         run: |
-          MAIN_SHA="$(git ls-remote origin refs/heads/main | cut -f1)"
-          test -n "$MAIN_SHA"
+          set -euo pipefail
+
+          echo "Checking current main commit..."
+
+          MAIN_SHA="$(git -c http.extraheader="AUTHORIZATION: basic $(printf 'x-access-token:%s' "$GH_TOKEN" | base64 -w 0)" ls-remote origin refs/heads/main | cut -f1)"
+
+          if [[ -z "$MAIN_SHA" ]]; then
+            echo "::error::Could not retrieve main SHA"
+            exit 1
+          fi
+
+          echo "=================================="
+          echo "DEPLOY_SHA: $DEPLOY_SHA"
+          echo "MAIN_SHA:   $MAIN_SHA"
+          echo "=================================="
 
           if [[ "$MAIN_SHA" == "$DEPLOY_SHA" ]]; then
             echo "current=true" >> "$GITHUB_OUTPUT"
+            echo "Commit is current. Deployment authorized."
           else
             echo "current=false" >> "$GITHUB_OUTPUT"
             echo "::notice::Skipping outdated deployment"
+            echo "A newer commit exists on main. Deployment skipped."
           fi
 
       - name: Deploy immutable image on EC2
         if: steps.freshness.outputs.current == 'true'
         shell: bash
         run: |
-          [[ "$DEPLOY_SHA" =~ ^[0-9a-f]{40}$ ]]
+          set -euo pipefail
+
+          [[ "$DEPLOY_SHA" =~ ^[0-9a-f]{40}$ ]] || {
+            echo "::error::Invalid deployment SHA"
+            exit 1
+          }
 
           IMAGE="ghcr.io/${GITHUB_REPOSITORY,,}:${DEPLOY_SHA}"
 
+          echo "Deploying image: $IMAGE"
+
           bash scripts/deploy.sh "$IMAGE"
+
+          echo "Deployment command completed successfully."
 
   verify-https:
     needs: deploy
-    if: needs.deploy.outputs.current == 'true'
+    if: >-
+      ${{
+        always() &&
+        needs.deploy.result == 'success' &&
+        needs.deploy.outputs.current == 'true'
+      }}
 
     runs-on: ubuntu-latest
     timeout-minutes: 5
@@ -82,9 +112,11 @@ jobs:
           set -euo pipefail
 
           [[ "$APP_URL" =~ ^https://[a-zA-Z0-9.-]+/?$ ]] || {
-            echo "APP_URL must be a valid HTTPS URL" >&2
+            echo "::error::APP_URL must be a valid HTTPS URL"
             exit 1
           }
+
+          echo "Checking public HTTPS health endpoint..."
 
           curl --fail --silent --show-error \
             --connect-timeout 5 \
@@ -94,4 +126,4 @@ jobs:
             --retry-all-errors \
             "${APP_URL%/}/health"
 
-          echo "Public HTTPS health check passed"
+          echo "Public HTTPS health check passed."
