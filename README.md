@@ -57,7 +57,7 @@ scripts/setup-ec2-ubuntu.sh# instalação de Docker (guia original, Ubuntu)
 docs/CONFIGURACAO.md       # guia AWS + GitHub
 docs/RELATORIO_FINAL.md    # relatório técnico
 docs/ROTEIRO_APRESENTACAO.md
-docs/evidencias/           # capturas de tela (EC2, SG, deploy, persistência, rollback)
+docs/evidencias/           # capturas de tela (EC2, SG, deploy, persistência, rollback) e vídeo de demonstração
 Dockerfile, compose.yaml, requirements.txt, requirements-dev.txt, pytest.ini
 ```
 
@@ -70,7 +70,20 @@ pip install -r requirements-dev.txt
 python -m flask --app app.main run --port 5000
 ```
 
-Sem `DB_PATH` definido, o banco fica em `/tmp/cloud_tasks.db`. No Windows, defina `DB_PATH` para um caminho existente (ex.: `set DB_PATH=%TEMP%\tasks.db`).
+Sem `DB_PATH` definido, o banco fica em `/tmp/cloud_tasks.db`. No Windows, defina `DB_PATH` para um caminho existente (ex.: `set DB_PATH=%TEMP%\tasks.db` no cmd ou `$env:DB_PATH="$env:TEMP\tasks.db"` no PowerShell). A tabela `tasks` é criada automaticamente na inicialização.
+
+### Variáveis de ambiente
+
+| Variável | Onde | Padrão | Função |
+|---|---|---|---|
+| `DB_PATH` | API | `/tmp/cloud_tasks.db` (imagem Docker: `/data/tasks.db`) | Caminho do banco SQLite |
+| `APP_NAME` | `deploy.sh` | `cloud-tasks-api` | Nome do contêiner da API |
+| `DATA_VOLUME` | `deploy.sh` | `cloud-tasks-data` | Volume nomeado com o banco |
+| `DOCKER_NETWORK` | `deploy.sh` | `cloud-tasks-net` | Rede Docker compartilhada com o Caddy (deve existir) |
+| `PUBLISH` | `deploy.sh` | `127.0.0.1:8000:8000` | Publicação de porta (apenas loopback) |
+| `HEALTH_URL` | `deploy.sh` | `http://127.0.0.1:8000/health` | URL do health check local |
+
+As variáveis do `deploy.sh` podem ser sobrescritas em `~/.cloud-tasks.env` na EC2 (permissão 600, fora do repositório).
 
 ### Testes
 
@@ -78,7 +91,7 @@ Sem `DB_PATH` definido, o banco fica em `/tmp/cloud_tasks.db`. No Windows, defin
 python -m pytest -q
 ```
 
-Os testes usam um banco temporário por teste (`tmp_path`) e também rodam na CI a cada PR.
+Os testes usam um banco temporário por teste (`tmp_path`) e também rodam na CI a cada PR. São 14 casos em [tests/test_api.py](tests/test_api.py), cobrindo `/health`, criação/listagem, validação de título, conclusão, edição de título (inclusive combinada com `done` e títulos inválidos), `404` em tarefas inexistentes e `DELETE` (`204`, `404` e exclusão repetida).
 
 ### Docker
 
@@ -100,10 +113,24 @@ O Compose mapeia `8080 → 8000` e guarda o banco no volume `task_data` (`DB_PAT
 | PATCH | `/tasks/<id>` | Atualiza título e/ou conclusão (`{"title":"..."}`, `{"done":true}`) — **melhoria** |
 | DELETE | `/tasks/<id>` | Remove tarefa (`204` se removida, `404` se inexistente) |
 
+**Regras de validação e respostas**
+
+| Situação | Resposta |
+|---|---|
+| Tarefa criada | `201` com `{"id":1,"title":"Minha tarefa","done":false}` |
+| Tarefa atualizada | `200` com a tarefa completa |
+| `title` ausente, vazio, só espaços, não-texto ou com mais de 120 caracteres | `400` com `{"error":"..."}` (o título é salvo sem espaços nas pontas) |
+| `PATCH` sem `title` nem `done`, ou `done` não booleano | `400` |
+| `PATCH`/`DELETE` em id inexistente | `404` com `{"error":"tarefa nao encontrada"}` |
+| Banco inacessível em `/health` | `503` com `{"status":"error"}` |
+
 ```bash
-curl -X POST https://32-193-56-180.sslip.io/tasks -H 'Content-Type: application/json' -d '{"title":"Minha tarefa"}'
-curl https://32-193-56-180.sslip.io/tasks
-curl -X DELETE -i https://32-193-56-180.sslip.io/tasks/1
+BASE=https://32-193-56-180.sslip.io   # ou http://localhost:8080 com Docker Compose
+curl $BASE/health
+curl -X POST $BASE/tasks -H 'Content-Type: application/json' -d '{"title":"Minha tarefa"}'
+curl $BASE/tasks
+curl -X PATCH $BASE/tasks/1 -H 'Content-Type: application/json' -d '{"title":"Novo título","done":true}'
+curl -X DELETE -i $BASE/tasks/1
 ```
 
 ## CI em Pull Requests
@@ -131,19 +158,35 @@ Após push na `main`, o job `publish` publica `ghcr.io/jpontesdev/computacao-em-
 
 Como o runner se conecta ao GitHub apenas por conexão de saída, o deploy **não precisa de SSH de entrada**. Deploys são serializados (`concurrency`) e limitados a 15 min.
 
-## Persistência de dados
+**Configuração no GitHub** (Settings → Secrets and variables → Actions, detalhes em [CONFIGURACAO.md](docs/CONFIGURACAO.md)):
 
-O banco SQLite fica em `/data/tasks.db`, montado no volume nomeado `cloud-tasks-data`. A cada deploy o contêiner é recriado com a nova imagem, mas o volume é preservado. **Comprovado na EC2:** a tarefa criada com a imagem `ccd2664` continuou listada após o CD #14 recriar o contêiner com a imagem `d8238ad` (evidências 11–14 em [docs/evidencias](docs/evidencias/)).
+| Nome | Tipo | Função |
+|---|---|---|
+| `DEPLOY_ENABLED` | Variable (repositório) | Interruptor do CD; só implanta com `true` |
+| `APP_URL` | Variable | URL HTTPS pública usada no `verify-https` (ex.: `https://32-193-56-180.sslip.io`) |
+| `GITHUB_TOKEN` | Automático | Login/push no GHCR (somente no job `publish`) |
 
-## Links
+Também é necessário o environment `production` e um runner auto-hospedado com o rótulo `deploy-ec2`.
 
-- Repositório: <https://github.com/jpontesdev/Computacao-em-Nuvem>
-- Aplicação: <https://32-193-56-180.sslip.io/health>
-- Pull Requests: [#1 — CI](https://github.com/jpontesdev/Computacao-em-Nuvem/pull/1) · [#2 — CD](https://github.com/jpontesdev/Computacao-em-Nuvem/pull/2) · [#3 — documentação](https://github.com/jpontesdev/Computacao-em-Nuvem/pull/3)
-- CI aprovada em PR: [run #4](https://github.com/jpontesdev/Computacao-em-Nuvem/actions/runs/43163185365) · CI aprovada na `main` com publish: [run #17](https://github.com/jpontesdev/Computacao-em-Nuvem/actions/runs/43424541858)
-- CD aprovado: [run #14](https://github.com/jpontesdev/Computacao-em-Nuvem/actions/runs/43424701915) · [run #16](https://github.com/jpontesdev/Computacao-em-Nuvem/actions/runs/43431044247)
-- Relatório técnico: [docs/RELATORIO_FINAL.md](docs/RELATORIO_FINAL.md) · Roteiro: [docs/ROTEIRO_APRESENTACAO.md](docs/ROTEIRO_APRESENTACAO.md)
-- **Evidências:** <https://github.com/jpontesdev/Computacao-em-Nuvem/tree/main/docs/evidencias> — capturas de tela numeradas (0–20) que comprovam a infraestrutura AWS (EC2, EBS, Security Group, IP elástico), a execução da CI/CD e o runner, o `/health` via HTTPS, a persistência, o monitoramento e o rollback.
+**Deploy manual na EC2** (mesmo script usado pelo CD; aceita apenas imagens deste repositório com SHA completo de 40 caracteres):
+
+```bash
+docker network create cloud-tasks-net   # apenas na primeira vez
+bash scripts/deploy.sh ghcr.io/jpontesdev/computacao-em-nuvem:<SHA>
+```
+
+Se existir um contêiner `cloud-tasks-api-previous` (rollback pendente), o script recusa o deploy até que ele seja resolvido.
+
+## Infraestrutura e Security Group
+
+EC2 `t3.micro` (Amazon Linux 2023, us-east-1) com IP elástico `32.193.56.180` e domínio `32-193-56-180.sslip.io`. O Caddy (`caddy:2`) termina o TLS em 80/443 e encaminha para a API, que só escuta em `127.0.0.1:8000` na rede Docker `cloud-tasks-net`.
+
+| Direção | Porta | Origem/Destino | Justificativa |
+|---|---|---|---|
+| Entrada | TCP 22 (SSH) | Um único IP `/32` do administrador | Administração manual — **nunca `0.0.0.0/0`** |
+| Entrada | TCP 80 (HTTP) | `0.0.0.0/0` | Redirecionamento do Caddy para HTTPS |
+| Entrada | TCP 443 (HTTPS) | `0.0.0.0/0` | Acesso público à API |
+| Saída | Todas | `0.0.0.0/0` | Runner (saída ao GitHub) e `docker pull` do GHCR |
 
 ## Funcionalidades bônus (até 10 pontos)
 
@@ -174,6 +217,21 @@ As capturas citadas estão na [pasta de evidências](https://github.com/jpontesd
 - **Benefícios:** uma versão defeituosa não substitui a que funciona; a indisponibilidade fica restrita à janela da troca; os dados permanecem no volume.
 - **Evidências:** 17–20 — teste em ambiente isolado na EC2 (contêiner `cloud-tasks-api-test`, porta 18000, volume próprio) com falha forçada por `SIMULATE_FAILURE=1` numa cópia do script: saída *"Rollback concluído e validado."*, mesmo ID de contêiner restaurado, tarefa preservada e produção respondendo `200`.
 
+## Persistência de dados
+
+O banco SQLite fica em `/data/tasks.db`, montado no volume nomeado `cloud-tasks-data`. A cada deploy o contêiner é recriado com a nova imagem, mas o volume é preservado. **Comprovado na EC2:** a tarefa criada com a imagem `ccd2664` continuou listada após o CD #14 recriar o contêiner com a imagem `d8238ad` (evidências 11–14 em [docs/evidencias](docs/evidencias/)).
+
+## Links
+
+- Repositório: <https://github.com/jpontesdev/Computacao-em-Nuvem>
+- Aplicação: <https://32-193-56-180.sslip.io/health>
+- Pull Requests: [#1 — CI](https://github.com/jpontesdev/Computacao-em-Nuvem/pull/1) · [#2 — CD](https://github.com/jpontesdev/Computacao-em-Nuvem/pull/2) · [#3 — documentação](https://github.com/jpontesdev/Computacao-em-Nuvem/pull/3)
+- CI aprovada em PR: [run #4](https://github.com/jpontesdev/Computacao-em-Nuvem/actions/runs/43163185365) · CI aprovada na `main` com publish: [run #17](https://github.com/jpontesdev/Computacao-em-Nuvem/actions/runs/43424541858)
+- CD aprovado: [run #14](https://github.com/jpontesdev/Computacao-em-Nuvem/actions/runs/43424701915) · [run #16](https://github.com/jpontesdev/Computacao-em-Nuvem/actions/runs/43431044247)
+- Relatório técnico: [docs/RELATORIO_FINAL.md](docs/RELATORIO_FINAL.md) · Roteiro: [docs/ROTEIRO_APRESENTACAO.md](docs/ROTEIRO_APRESENTACAO.md)
+- **Evidências:** <https://github.com/jpontesdev/Computacao-em-Nuvem/tree/main/docs/evidencias> — capturas de tela numeradas (0–20) que comprovam a infraestrutura AWS (EC2, EBS, Security Group, IP elástico), a execução da CI/CD e o runner, o `/health` via HTTPS, a persistência, o monitoramento e o rollback, além do vídeo de demonstração.
+- Vídeo de demonstração: [docs/evidencias/VIDEO_DE_DEMOSTRACAO_comp_nuvem.mp4](docs/evidencias/VIDEO_DE_DEMOSTRACAO_comp_nuvem.mp4)
+
 ## Situação atual e pendências
 
 | Etapa | Situação |
@@ -185,15 +243,10 @@ As capturas citadas estão na [pasta de evidências](https://github.com/jpontesd
 | CD automático + `/health` local e HTTPS externo | ✅ CD #13–#16 |
 | Persistência após recriar o contêiner | ✅ |
 | Bônus: domínio/TLS, observabilidade (CloudWatch/SNS), rollback automático | ✅ |
-| Gravação do vídeo / demonstração | ⏳ |
+| Gravação do vídeo / demonstração | ✅ [VIDEO_DE_DEMOSTRACAO_comp_nuvem.mp4](docs/evidencias/VIDEO_DE_DEMOSTRACAO_comp_nuvem.mp4) |
 | Registro do custo efetivo e encerramento dos recursos AWS | ⏳ Após a apresentação |
 
 ## Segurança e limitações
 
-Deploy didático: instância única, sem balanceamento nem alta disponibilidade; há alguns segundos de indisponibilidade na troca do contêiner. Não usar dados reais. O grupo `docker` na EC2 equivale a privilégios de root. SSH liberado apenas para um IP `/32` do administrador — **nunca `0.0.0.0/0`**; o deploy usa runner auto-hospedado, sem SSH vindo do GitHub (ver [CONFIGURACAO.md](docs/CONFIGURACAO.md)).
-
-
-## Integrantes do Grupo
-- Gabriel Duarte - 22303292
-- João Vitor Jardim Machado Pontes - 22307063
-- Elter Rodrigues - 22309480
+- **Segurança:** nenhuma chave, token ou dado real versionado (`.gitignore` bloqueia `*.pem`, `*.key`, `.env` e `*.db`); contêiner roda com usuário sem privilégios; API exposta apenas via Caddy/HTTPS; SSH restrito a um IP `/32`; deploy por runner auto-hospedado, sem SSH de entrada; PRs não recebem `packages: write` nem disparam CD; o `deploy.sh` valida a referência da imagem antes de executá-la.
+- **Limitações:** deploy didático em instância única, sem balanceamento nem alta disponibilidade; há alguns segundos de indisponibilidade na troca do contêiner; SQLite não é adequado a múltiplas instâncias; a API não tem autenticação — não usar dados reais. O grupo `docker` na EC2 equivale a privilégios de root.
