@@ -7,25 +7,26 @@
 
 ## 1. Preparação e repositório (Dias 1–3) — *Git/branches/PR e organização: 10 pts*
 
-- [ ] Criar repositório próprio a partir do repositório-base fornecido pelo professor (Req. 1)
+- [X] Criar repositório próprio a partir do repositório-base fornecido pelo professor (Req. 1)
 - [ ] Conceder acesso ao professor, caso o repositório seja privado
-- [ ] Clonar o repositório e compreender a API existente
-- [ ] Rodar os testes localmente com `pytest`
-- [ ] Construir e executar a aplicação com Docker localmente
-- [ ] Atualizar o README com os integrantes (Req. 1)
+- [x] Clonar o repositório e compreender a API existente
+- [x] Rodar os testes localmente com `pytest`
+- [x] Construir e executar a aplicação com Docker localmente
+- [x] Atualizar o README com os integrantes (Req. 1)
 - [ ] Atualizar o README com instruções de uso (Req. 1)
 - [ ] Garantir que nenhuma chave privada, token ou dado real esteja versionado (Regras)
 
 ## 2. Evolução funcional da API (Dias 4–5) — *Evolução funcional com testes: 10 pts*
 
-- [ ] Criar ao menos 1 branch no padrão `feature/...` para o desenvolvimento (Req. 8)
-- [ ] Implementar `DELETE /tasks/<id>` (Req. 7)
-  - [ ] Retornar HTTP `204` quando a tarefa existir e for removida
-  - [ ] Retornar HTTP `404` quando a tarefa não existir
-- [ ] Escrever no mínimo 2 testes para `DELETE /tasks/<id>` (ex.: caso 204 e caso 404) (Req. 7)
-- [ ] Implementar mais 1 melhoria na API (Req. 7)
-- [ ] Escrever teste para a melhoria implementada (Req. 7)
-- [ ] Confirmar que todos os testes passam localmente com `pytest`
+- [X] Criar ao menos 1 branch no padrão `feature/...` para o desenvolvimento (Req. 8)
+- [X] Implementar `DELETE /tasks/<id>` (Req. 7)
+  - [X] Retornar HTTP `204` quando a tarefa existir e for removida
+  - [X] Retornar HTTP `404` quando a tarefa não existir
+- [X] Escrever no mínimo 2 testes para `DELETE /tasks/<id>` (ex.: caso 204 e caso 404) (Req. 7)
+- [X] Implementar mais 1 melhoria na API (Req. 7)
+  - [X] Permitir editar o título da tarefa via `PATCH /tasks/<id>` (`{"title":"..."}`)
+- [X] Escrever teste para a melhoria implementada (Req. 7)
+- [X] Confirmar que todos os testes passam localmente com `pytest`
 
 ## 3. Infraestrutura AWS EC2 (Dias 4–5) — *Infraestrutura EC2, rede e segurança: 15 pts*
 

@@ -92,7 +92,8 @@ O Compose mapeia `8080 → 8000` e guarda o banco no volume `task_data` (`DB_PAT
 | GET | `/health` | Saúde da aplicação/banco (200 ou 503) |
 | GET | `/tasks` | Lista tarefas |
 | POST | `/tasks` | Cria tarefa (`{"title":"..."}`, até 120 caracteres) |
-| PATCH | `/tasks/<id>` | Atualiza conclusão (`{"done":true}`) |
+| PATCH | `/tasks/<id>` | Atualiza título e/ou conclusão (`{"title":"..."}`, `{"done":true}`) |
+| DELETE | `/tasks/<id>` | Remove tarefa (`204` se removida, `404` se inexistente) |
 
 `DELETE /tasks/<id>` e a melhoria adicional estão a cargo de outro integrante e ainda não constam no código.
 
@@ -157,3 +158,9 @@ O banco SQLite fica em `/data/tasks.db` dentro do contêiner. Na EC2, `deploy.sh
 ## Segurança e limitações
 
 Deploy didático: sem TLS, balanceamento, rollback automático ou alta disponibilidade; há alguns segundos de indisponibilidade na troca do contêiner. Não usar dados reais. O grupo `docker` na EC2 equivale a privilégios de root. O runner hospedado do GitHub não tem IP fixo: **SSH nunca deve ser liberado para `0.0.0.0/0`**; a solução de acesso depende de orientação docente (ver [CONFIGURACAO.md](docs/CONFIGURACAO.md)).
+
+
+## Integrantes do Grupo
+Gabriel Duarte - 22303292
+João Vitor Jardim Machado Pontes - 22307063
+Elter Rodrigues - 22309480
