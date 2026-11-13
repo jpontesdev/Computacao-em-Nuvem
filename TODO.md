@@ -34,7 +34,7 @@
 - [x] Configurar Security Group (Req. 2)
   - [x] Liberar porta HTTP necessária para acesso à aplicação
   - [x] Restringir acesso SSH — **não** utilizar `0.0.0.0/0` (Req. 6 / Regras)
-  - [ ] Aplicar a solução segura para runners de deploy orientada pelo professor / guia fornecido (Req. 6 / Regras)
+  - [x] Aplicar a solução segura para runners de deploy orientada pelo professor / guia fornecido (Req. 6 / Regras)
 - [x] Documentar o Security Group (regras, portas e origens) (Req. 2)
 - [x] Confirmar que a aplicação está acessível via HTTP (Req. 2)
 - [x] Monitorar custos dos recursos AWS durante o trabalho (Regras)
@@ -62,9 +62,9 @@
 
 ## 6. Entrega Contínua — CD (Dias 8–10) — *CD automático e verificação de saúde: 20 pts*
 
-- [ ] Configurar Secrets/Variables no GitHub (Req. 6)
+- [x] Configurar Secrets/Variables no GitHub (Req. 6)
   - [x] Não expor credenciais ou chaves no código — tudo via `secrets`/`vars`; `.gitignore` bloqueia `*.pem`/`*.key`
-  - [ ] Não expor credenciais ou chaves nos logs — workflow não ecoa secrets e apaga a chave ao final; confirmar no primeiro run real
+  - [x] Não expor credenciais ou chaves nos logs — workflow não ecoa secrets e apaga a chave ao final; confirmar no primeiro run real
   - [x] Não expor credenciais ou chaves no README
 - [x] Criar workflow de CD no GitHub Actions (Req. 5) — `.github/workflows/cd.yml`, desativado até `DEPLOY_ENABLED=true`
   - [x] Condicionar a execução do CD ao sucesso da CI (Req. 5) — `workflow_run` + `conclusion == success` + `event == push` na `main`
