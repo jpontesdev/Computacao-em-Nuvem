@@ -1,91 +1,97 @@
+
 name: CD - deploy EC2
+
 on:
   workflow_run:
     workflows: ["CI - tests and image"]
     types: [completed]
     branches: [main]
+
 permissions:
   contents: read
-# One deploy at a time on the single EC2 host. A running deploy is never
-# cancelled; if several are waiting, GitHub keeps only the newest pending one.
+
 concurrency:
   group: cd-production
   cancel-in-progress: false
+
 jobs:
   deploy:
-    # Only successful CI runs started by pushes to main, and only after the
-    # EC2 infrastructure and deploy secrets are ready. Deploy stays disabled
-    # (job skipped, not failed) until the repository variable DEPLOY_ENABLED
-    # is set to exactly 'true' (Settings > Secrets and variables > Actions >
-    # Variables). It must be a repository-level variable: environment
-    # variables are not available when this job-level `if` is evaluated.
-    if: ${{ vars.DEPLOY_ENABLED == 'true' && github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.event == 'push' }}
-    runs-on: ubuntu-latest
+    if: >-
+      ${{
+        vars.DEPLOY_ENABLED == 'true' &&
+        github.event.workflow_run.conclusion == 'success' &&
+        github.event.workflow_run.event == 'push' &&
+        github.event.workflow_run.head_branch == 'main' &&
+        github.event.workflow_run.head_repository.full_name == github.repository
+      }}
+
+    runs-on: [self-hosted, linux, x64, deploy-ec2]
     timeout-minutes: 15
     environment: production
+
     env:
       DEPLOY_SHA: ${{ github.event.workflow_run.head_sha }}
+
+    outputs:
+      current: ${{ steps.freshness.outputs.current }}
+
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout verified commit
+        uses: actions/checkout@v4
         with:
           ref: ${{ github.event.workflow_run.head_sha }}
+          persist-credentials: false
+
       - name: Skip if a newer commit is already on main
         id: freshness
-        # Prevents an older run (late finish or manual re-run) from replacing
-        # a newer version; the newer commit's own CD run deploys it.
+        shell: bash
         run: |
           MAIN_SHA="$(git ls-remote origin refs/heads/main | cut -f1)"
           test -n "$MAIN_SHA"
-          if [ "$MAIN_SHA" = "$DEPLOY_SHA" ]; then
+
+          if [[ "$MAIN_SHA" == "$DEPLOY_SHA" ]]; then
             echo "current=true" >> "$GITHUB_OUTPUT"
           else
             echo "current=false" >> "$GITHUB_OUTPUT"
-            echo "::notice::Skipping deploy of ${DEPLOY_SHA}: main is now at ${MAIN_SHA}."
+            echo "::notice::Skipping outdated deployment"
           fi
-      - name: Set up SSH credentials and verify host identity
-        if: ${{ steps.freshness.outputs.current == 'true' }}
-        env:
-          SSH_KEY: ${{ secrets.EC2_SSH_KEY }}
-          KNOWN_HOSTS: ${{ secrets.EC2_KNOWN_HOSTS }}
+
+      - name: Deploy immutable image on EC2
+        if: steps.freshness.outputs.current == 'true'
+        shell: bash
         run: |
-          test -n "$SSH_KEY" && test -n "$KNOWN_HOSTS"
-          # Job-scoped directory (also safe on a self-hosted runner): does not
-          # touch the runner user's ~/.ssh and is removed in the last step.
-          SSH_DIR="${RUNNER_TEMP}/deploy-ssh"
-          install -d -m 700 "$SSH_DIR"
-          umask 077
-          printf '%s\n' "$SSH_KEY" > "$SSH_DIR/key"
-          printf '%s\n' "$KNOWN_HOSTS" > "$SSH_DIR/known_hosts"
-      - name: Deploy immutable image
-        if: ${{ steps.freshness.outputs.current == 'true' }}
-        env:
-          EC2_HOST: ${{ secrets.EC2_HOST }}
-          EC2_USER: ${{ vars.EC2_USER }}
-        run: |
+          [[ "$DEPLOY_SHA" =~ ^[0-9a-f]{40}$ ]]
+
           IMAGE="ghcr.io/${GITHUB_REPOSITORY,,}:${DEPLOY_SHA}"
-          test -n "$EC2_HOST" && test -n "$EC2_USER"
-          # Expected values are host/user, not arbitrary SSH options.
-          [[ "$EC2_HOST" =~ ^[a-zA-Z0-9.-]+$ ]]
-          [[ "$EC2_USER" =~ ^[a-z_][a-z0-9_-]*$ ]]
-          SSH_DIR="${RUNNER_TEMP}/deploy-ssh"
-          ssh -i "$SSH_DIR/key" \
-            -o IdentitiesOnly=yes \
-            -o UserKnownHostsFile="$SSH_DIR/known_hosts" \
-            -o StrictHostKeyChecking=yes \
-            -o BatchMode=yes \
-            -o ConnectTimeout=15 \
-            -o ServerAliveInterval=15 -o ServerAliveCountMax=4 \
-            "${EC2_USER}@${EC2_HOST}" "bash -s -- '${IMAGE}'" < scripts/deploy.sh
-      - name: Verify remote endpoint
-        if: ${{ steps.freshness.outputs.current == 'true' }}
+
+          bash scripts/deploy.sh "$IMAGE"
+
+  verify-https:
+    needs: deploy
+    if: needs.deploy.outputs.current == 'true'
+
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+
+    steps:
+      - name: Verify public HTTPS health endpoint
         env:
-          EC2_HOST: ${{ secrets.EC2_HOST }}
-        # Bounded: at most 11 attempts, 10 s each, fails the job if unhealthy.
+          APP_URL: ${{ vars.APP_URL }}
+        shell: bash
         run: |
+          set -euo pipefail
+
+          [[ "$APP_URL" =~ ^https://[a-zA-Z0-9.-]+/?$ ]] || {
+            echo "APP_URL must be a valid HTTPS URL" >&2
+            exit 1
+          }
+
           curl --fail --silent --show-error \
-            --connect-timeout 5 --max-time 10 \
-            --retry 10 --retry-delay 3 --retry-all-errors \
-            "http://${EC2_HOST}/health"
-      - name: Remove SSH material
-        if: ${{ always() }}
-        run: rm -rf "${RUNNER_TEMP}/deploy-ssh"
+            --connect-timeout 5 \
+            --max-time 10 \
+            --retry 10 \
+            --retry-delay 3 \
+            --retry-all-errors \
+            "${APP_URL%/}/health"
+
+          echo "Public HTTPS health check passed"

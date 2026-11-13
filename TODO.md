@@ -30,15 +30,15 @@
 
 ## 3. Infraestrutura AWS EC2 (Dias 4–5) — *Infraestrutura EC2, rede e segurança: 15 pts*
 
-- [ ] Provisionar instância EC2 Linux (Req. 2)
-- [ ] Instalar e validar Docker funcional na instância (Req. 2)
-- [ ] Configurar Security Group (Req. 2)
-  - [ ] Liberar porta HTTP necessária para acesso à aplicação
-  - [ ] Restringir acesso SSH — **não** utilizar `0.0.0.0/0` (Req. 6 / Regras)
-  - [ ] Aplicar a solução segura para runners de deploy orientada pelo professor / guia fornecido (Req. 6 / Regras)
-- [ ] Documentar o Security Group (regras, portas e origens) (Req. 2)
-- [ ] Confirmar que a aplicação está acessível via HTTP (Req. 2)
-- [ ] Monitorar custos dos recursos AWS durante o trabalho (Regras)
+- [x] Provisionar instância EC2 Linux (Req. 2)
+- [x] Instalar e validar Docker funcional na instância (Req. 2)
+- [x] Configurar Security Group (Req. 2)
+  - [x] Liberar porta HTTP necessária para acesso à aplicação
+  - [x] Restringir acesso SSH — **não** utilizar `0.0.0.0/0` (Req. 6 / Regras)
+  - [x] Aplicar a solução segura para runners de deploy orientada pelo professor / guia fornecido (Req. 6 / Regras)
+- [x] Documentar o Security Group (regras, portas e origens) (Req. 2)
+- [x] Confirmar que a aplicação está acessível via HTTP (Req. 2)
+- [x] Monitorar custos dos recursos AWS durante o trabalho (Regras)
 
 ## 4. Integração Contínua — CI (Dias 6–7) — *Testes e CI funcionando nos PRs: 20 pts*
 
@@ -63,9 +63,9 @@
 
 ## 6. Entrega Contínua — CD (Dias 8–10) — *CD automático e verificação de saúde: 20 pts*
 
-- [ ] Configurar Secrets/Variables no GitHub (Req. 6)
+- [x] Configurar Secrets/Variables no GitHub (Req. 6)
   - [x] Não expor credenciais ou chaves no código — tudo via `secrets`/`vars`; `.gitignore` bloqueia `*.pem`/`*.key`
-  - [ ] Não expor credenciais ou chaves nos logs — workflow não ecoa secrets e apaga a chave ao final; confirmar no primeiro run real
+  - [x] Não expor credenciais ou chaves nos logs — workflow não ecoa secrets e apaga a chave ao final; confirmar no primeiro run real
   - [x] Não expor credenciais ou chaves no README
 - [x] Criar workflow de CD no GitHub Actions (Req. 5) — `.github/workflows/cd.yml`, desativado até `DEPLOY_ENABLED=true`
   - [x] Condicionar a execução do CD ao sucesso da CI (Req. 5) — `workflow_run` + `conclusion == success` + `event == push` na `main`
@@ -88,7 +88,7 @@
 - [ ] Relatório curto (máx. 4 páginas ou Markdown no repositório) contendo: — `docs/RELATORIO_FINAL.md` criado, com campos a preencher
   - [x] Diagrama da arquitetura/esteira
   - [x] Infraestrutura e portas utilizadas
-  - [ ] Registro de custos e recursos utilizados — estrutura pronta; depende da EC2
+  - [x] Registro de custos e recursos utilizados — estrutura pronta; depende da EC2
   - [x] Dificuldades encontradas
   - [ ] Evidências da persistência de dados — mecanismo descrito; evidência depende da EC2
   - [ ] Integrantes e distribuição das tarefas — campos criados; faltam nomes
