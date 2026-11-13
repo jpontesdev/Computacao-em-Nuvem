@@ -114,6 +114,6 @@
 
 ## 11. Bônus (opcional — até 10 pts, respeitando teto do docente)
 
-- [ ] Configurar domínio/TLS com justificativa
+- [x] Configurar domínio/TLS com justificativa
 - [ ] Observabilidade adicional
 - [ ] Rollback automatizado seguro
