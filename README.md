@@ -6,11 +6,11 @@ API Flask/SQLite de tarefas usada como objeto de uma **esteira completa de CI/CD
 
 ## Integrantes e responsabilidades
 
-| Integrante | Matrícula | Responsabilidades |
+| Integrante | Matrícula | Itens do [TODO](TODO.md) |
 |---|---|---|
-| João Vitor Jardim Machado Pontes | 22307063 | Criação do repositório a partir da base; `DELETE /tasks/<id>`; melhoria de edição de título via `PATCH`; testes da evolução funcional |
-| Elter Rodrigues | 22309480 | Workflow de CI (PR #1); publicação no GHCR; robustez do CD (PR #2); README, relatório e roteiro (PR #3); checklist |
-| Gabriel Duarte Marques | 22303292 | EC2, Security Group e IP elástico; Docker e Caddy (HTTPS); runner auto-hospedado e adaptação do CD; evidências de deploy e persistência; observabilidade (CloudWatch/SNS); rollback automático |
+| João Vitor Jardim Machado Pontes | 22307063 | 1 (preparação e repositório), 2 (evolução da API: `DELETE /tasks/<id>`, melhoria `PATCH` de título e testes) e 8 (documentação, evidências e apresentação) |
+| Elter Rodrigues | 22309480 | 4 (CI no GitHub Actions), 5 (publicação versionada no GHCR), parte do 6 (robustez do workflow de CD — PR #2) e parte do 8 (documentação) |
+| Gabriel Duarte Marques | 22303292 | 3 (EC2, rede e segurança), 6 (CD: runner auto-hospedado e deploy na EC2), 7 (validação, nova versão e persistência) e 11 (bônus: TLS, observabilidade e rollback) |
 
 ## Objetivos e requisitos acadêmicos
 

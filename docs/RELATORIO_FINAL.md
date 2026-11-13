@@ -105,11 +105,11 @@ Os dados só se perdem se o volume ou o disco da instância forem removidos (evi
 
 ## 8. Integrantes e distribuição das tarefas
 
-| Integrante | Matrícula | Contribuições |
+| Integrante | Matrícula | Itens do [TODO](../TODO.md) |
 |---|---|---|
-| João Vitor Jardim Machado Pontes | 22307063 | Criação do repositório; `DELETE /tasks/<id>`; melhoria `PATCH` de título; testes (`feature/DELETE`) |
-| Elter Rodrigues | 22309480 | Workflow de CI e publicação no GHCR (PR #1); robustez do CD (PR #2); README, relatório e roteiro (PR #3); checklist |
-| Gabriel Duarte Marques | 22303292 | EC2, Security Group, IP elástico, Docker e Caddy/TLS (`feature/part3-ec2`); runner auto-hospedado e CD; evidências de deploy e persistência; CloudWatch/SNS; rollback automático |
+| João Vitor Jardim Machado Pontes | 22307063 | 1 (preparação e repositório), 2 (evolução da API: `DELETE /tasks/<id>`, melhoria `PATCH` de título e testes) e 8 (documentação, evidências e apresentação) |
+| Elter Rodrigues | 22309480 | 4 (CI no GitHub Actions), 5 (publicação versionada no GHCR), parte do 6 (robustez do workflow de CD — PR #2) e parte do 8 (documentação) |
+| Gabriel Duarte Marques | 22303292 | 3 (EC2, rede e segurança), 6 (CD: runner auto-hospedado e deploy na EC2), 7 (validação, nova versão e persistência) e 11 (bônus: TLS, observabilidade e rollback) |
 
 ## 9. Conclusão
 
