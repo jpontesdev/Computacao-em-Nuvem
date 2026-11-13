@@ -8,7 +8,7 @@
 ## 1. Preparação e repositório (Dias 1–3) — *Git/branches/PR e organização: 10 pts*
 
 - [X] Criar repositório próprio a partir do repositório-base fornecido pelo professor (Req. 1)
-- [ ] Conceder acesso ao professor, caso o repositório seja privado
+- [x] Conceder acesso ao professor, caso o repositório seja privado
 - [x] Clonar o repositório e compreender a API existente
 - [x] Rodar os testes localmente com `pytest`
 - [x] Construir e executar a aplicação com Docker localmente
@@ -72,7 +72,7 @@
   - [x] Implantar na EC2 a imagem correspondente ao SHA do commit (Req. 5) — `ghcr.io/<repo>:<head_sha>`; execução na EC2 pendente
   - [x] Checar o endpoint `/health` após o deploy (Req. 5) — local no `deploy.sh` e externa no workflow, com tentativas e timeout limitados
   - [x] Evitar deploys simultâneos e versões antigas sobrescrevendo novas — `concurrency` + checagem do topo da `main`
-- [ ] Realizar o primeiro deploy automatizado com sucesso
+- [x] Realizar o primeiro deploy automatizado com sucesso
 
 ## 7. Validação e estabilização (Dias 11–12)
 
@@ -115,5 +115,5 @@
 ## 11. Bônus (opcional — até 10 pts, respeitando teto do docente)
 
 - [x] Configurar domínio/TLS com justificativa
-- [ ] Observabilidade adicional
+- [x] Observabilidade adicional
 - [ ] Rollback automatizado seguro
