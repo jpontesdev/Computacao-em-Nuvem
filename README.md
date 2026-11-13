@@ -47,6 +47,6 @@ O deploy é simplificado: não há TLS, balanceamento, rollback automatizado nem
 
 
 ## Integrantes do Grupo
-Gabriel Duarte - 22303292
-João Vitor Jardim Machado Pontes - 22307063
-Elter Rodrigues - 22309480
+- Gabriel Duarte - 22303292
+- João Vitor Jardim Machado Pontes - 22307063
+- Elter Rodrigues - 22309480
