@@ -109,10 +109,14 @@ if (( healthy == 0 )); then
   exit 1
 fi
 
-# O deploy foi validado.
+# Não desfazer o deploy por falha de limpeza.
+trap - EXIT
+
 if (( replaced )); then
-  docker rm "$PREVIOUS" >/dev/null
+  if ! docker rm "$PREVIOUS" >/dev/null; then
+    echo "ERRO: nova versão saudável, mas limpeza do contêiner anterior falhou." >&2
+    exit 1
+  fi
 fi
 
-replaced=0
 echo "Deploy concluído: $IMAGE"

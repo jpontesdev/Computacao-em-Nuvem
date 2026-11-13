@@ -116,4 +116,4 @@
 
 - [x] Configurar domínio/TLS com justificativa
 - [x] Observabilidade adicional
-- [ ] Rollback automatizado seguro
+- [x] Rollback automatizado seguro
