@@ -160,4 +160,10 @@ O banco SQLite fica em `/data/tasks.db`, montado no volume nomeado `cloud-tasks-
 
 ## Segurança e limitações
 
-SSH liberado apenas para um IP `/32` do administrador — **nunca `0.0.0.0/0`**; o deploy usa runner auto-hospedado, sem SSH vindo do GitHub. Nenhuma chave, token ou dado real é versionado; a configuração local da EC2 fica em `~/.cloud-tasks.env`, fora do repositório. A API escuta apenas em `127.0.0.1:8000` e é exposta pelo Caddy em HTTPS. Limitações: instância única, sem alta disponibilidade; há alguns segundos de indisponibilidade na troca do contêiner; o grupo `docker` equivale a privilégios de root na instância.
+Deploy didático: sem TLS, balanceamento, rollback automático ou alta disponibilidade; há alguns segundos de indisponibilidade na troca do contêiner. Não usar dados reais. O grupo `docker` na EC2 equivale a privilégios de root. O runner hospedado do GitHub não tem IP fixo: **SSH nunca deve ser liberado para `0.0.0.0/0`**; a solução de acesso depende de orientação docente (ver [CONFIGURACAO.md](docs/CONFIGURACAO.md)).
+
+
+## Integrantes do Grupo
+- Gabriel Duarte - 22303292
+- João Vitor Jardim Machado Pontes - 22307063
+- Elter Rodrigues - 22309480
