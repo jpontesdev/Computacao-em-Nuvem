@@ -4,7 +4,7 @@
 
 ## 1. Introdução
 
-O objetivo é transformar uma API Python que funciona localmente em um serviço entregue automaticamente na nuvem: cada mudança passa por Pull Request e testes, gera uma imagem Docker imutável identificada pelo SHA do commit e, quando integrada à `main`, é implantada em uma instância AWS EC2 com verificação de saúde.
+O objetivo é transformar uma API Python que funciona localmente em um serviço entregue automaticamente na nuvem: cada mudança passa por Pull Request e testes, gera uma imagem Docker identificada pela tag com o SHA do commit e, quando integrada à `main`, é implantada em uma instância AWS EC2 com verificação de saúde.
 
 A **Cloud Tasks API** (Flask + SQLite, servida por Gunicorn) oferece `GET /`, `GET /health` (testa o banco; 200 ou 503), `GET /tasks`, `POST /tasks`, `PATCH /tasks/<id>` e `DELETE /tasks/<id>`. A evolução funcional do grupo foi o `DELETE` (204/404, 3 testes) e, como melhoria, a edição do título via `PATCH` (6 testes, incluindo validação e 404).
 
@@ -61,9 +61,17 @@ flowchart LR
 
 **Nova versão pela esteira:** o CD #13 implantou `ccd2664` e o CD #14 implantou `d8238ad` automaticamente após cada merge na `main`.
 
-**Rollback automático (bônus):** `deploy.sh` mantém o contêiner anterior como `cloud-tasks-api-previous` até a nova versão passar no health check; se falhar, remove a nova e restaura a anterior. Teste isolado (contêiner `cloud-tasks-api-test`, porta 18000, volume próprio), com falha forçada (`SIMULATE_FAILURE=1`): a saída foi *"Nova versão não passou no health check… Rollback concluído e validado."* (código de saída 1). O contêiner restaurado mantinha o mesmo ID anterior (`654fcaec…`) e a tarefa criada. A produção continuou respondendo 200 (evidências 17–20).
+### 4.1 Funcionalidades bônus
 
-**Observabilidade (bônus):** alarme CloudWatch em `AWS/EC2 StatusCheckFailed` (máximo ≥ 1 em 2 de 2 períodos de 5 min) notificando por e-mail o tópico SNS `cloud-tasks-alertas` (evidências 15–16).
+Detalhamento no [README](../README.md#funcionalidades-bônus-até-10-pontos); capturas na [pasta de evidências](https://github.com/jpontesdev/Computacao-em-Nuvem/tree/main/docs/evidencias).
+
+| Bônus | Implementação | Justificativa e benefício | Evidências |
+|---|---|---|---|
+| HTTPS com Caddy | Contêiner `caddy:2` como proxy reverso (80/443) para a API, que escuta só em `127.0.0.1:8000`; HTTPS automático com redirecionamento HTTP → HTTPS; domínio `32-193-56-180.sslip.io` resolvendo o IP elástico | Certificado sem domínio pago e sem gestão manual; tráfego criptografado e API não exposta diretamente | 7, 8, 10, 20 |
+| CloudWatch + SNS | Alarme em `AWS/EC2 StatusCheckFailed` (máximo ≥ 1 em 2 de 2 períodos de 5 min) → tópico SNS `cloud-tasks-alertas` com assinatura por e-mail | Detecção proativa de falhas da instância, sem depender de acesso à aplicação. Não monitora o `/health` da API | 15, 16 |
+| Rollback automático | `deploy.sh` preserva o contêiner atual como `-previous`, valida a nova versão por `/health` (20 tentativas) e, em falha, restaura e revalida a anterior, encerrando o CD com erro | Uma versão defeituosa não substitui a funcional; dados preservados no volume | 17–20 |
+
+**Teste de rollback:** feito em ambiente isolado na EC2 (contêiner `cloud-tasks-api-test`, porta 18000, volume próprio), com falha forçada por `SIMULATE_FAILURE=1` numa cópia do script. Saída: *"Nova versão não passou no health check… Rollback concluído e validado."* (código 1). O contêiner restaurado tinha o mesmo ID anterior (`654fcaec…`) e a tarefa criada, e a produção continuou respondendo 200.
 
 ## 5. Persistência
 
@@ -113,4 +121,4 @@ Os dados só se perdem se o volume ou o disco da instância forem removidos (evi
 
 ## 9. Conclusão
 
-A esteira cumpre o fluxo completo: PRs executam testes e build sem publicar; merges na `main` publicam imagens imutáveis por SHA no GHCR e disparam o deploy automático na EC2, validado por `/health` local e via HTTPS externo. A persistência após recriar o contêiner foi comprovada, e os bônus de TLS, observabilidade e rollback seguro foram implementados. Restam o registro do custo efetivo e a evidência de encerramento dos recursos, que serão feitos após a apresentação.
+A esteira cumpre o fluxo completo: PRs executam testes e build sem publicar; merges na `main` publicam no GHCR imagens identificadas pelo SHA do commit e disparam o deploy automático na EC2, validado por `/health` local e via HTTPS externo. A persistência após recriar o contêiner foi comprovada, e os bônus de TLS, observabilidade e rollback seguro foram implementados. Restam o registro do custo efetivo e a evidência de encerramento dos recursos, que serão feitos após a apresentação.

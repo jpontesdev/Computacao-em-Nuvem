@@ -120,7 +120,7 @@ PRs nunca recebem `packages: write`, nunca publicam imagem e não disparam o CD.
 
 ## Publicação no GHCR
 
-Após push na `main`, o job `publish` publica `ghcr.io/jpontesdev/computacao-em-nuvem:<SHA completo do commit>`. A tag é imutável e identifica exatamente o código implantado. O pacote é público, permitindo `docker pull` na EC2 sem credenciais.
+Após push na `main`, o job `publish` publica `ghcr.io/jpontesdev/computacao-em-nuvem:<SHA completo do commit>`. A tag por SHA identifica exatamente o commit implantado e não é reaproveitada pela esteira; observa-se, porém, que tags no GHCR não são tecnicamente imutáveis (a garantia criptográfica é o *digest* `sha256` da imagem). O pacote é público, permitindo `docker pull` na EC2 sem credenciais.
 
 ## CD na EC2
 
@@ -143,6 +143,36 @@ O banco SQLite fica em `/data/tasks.db`, montado no volume nomeado `cloud-tasks-
 - CI aprovada em PR: [run #4](https://github.com/jpontesdev/Computacao-em-Nuvem/actions/runs/43163185365) · CI aprovada na `main` com publish: [run #17](https://github.com/jpontesdev/Computacao-em-Nuvem/actions/runs/43424541858)
 - CD aprovado: [run #14](https://github.com/jpontesdev/Computacao-em-Nuvem/actions/runs/43424701915) · [run #16](https://github.com/jpontesdev/Computacao-em-Nuvem/actions/runs/43431044247)
 - Relatório técnico: [docs/RELATORIO_FINAL.md](docs/RELATORIO_FINAL.md) · Roteiro: [docs/ROTEIRO_APRESENTACAO.md](docs/ROTEIRO_APRESENTACAO.md)
+- **Evidências:** <https://github.com/jpontesdev/Computacao-em-Nuvem/tree/main/docs/evidencias> — capturas de tela numeradas (0–20) que comprovam a infraestrutura AWS (EC2, EBS, Security Group, IP elástico), a execução da CI/CD e o runner, o `/health` via HTTPS, a persistência, o monitoramento e o rollback.
+
+## Funcionalidades bônus (até 10 pontos)
+
+As capturas citadas estão na [pasta de evidências](https://github.com/jpontesdev/Computacao-em-Nuvem/tree/main/docs/evidencias).
+
+### Bônus 1 — HTTPS com Caddy
+
+- **Proxy reverso:** o Caddy (`caddy:2`) roda como contêiner na EC2, publicando as portas 80 e 443, e encaminha as requisições para o contêiner `cloud-tasks-api` pela rede Docker `cloud-tasks-net`. A API não é exposta diretamente: escuta apenas em `127.0.0.1:8000` no host. As respostas trazem `server: gunicorn` e `via: 1.1 Caddy`, confirmando a passagem pelo proxy.
+- **TLS:** o HTTPS automático do Caddy obtém e renova o certificado sem configuração manual e redireciona HTTP → HTTPS; HTTP/2 e HTTP/3 ficam habilitados. O `Caddyfile` é mantido na instância (fora do repositório).
+- **Domínio `sslip.io`:** serviço de DNS público que resolve `32-193-56-180.sslip.io` para o IP elástico `32.193.56.180`. Fornece um nome de host válido para emissão do certificado sem registrar um domínio próprio.
+- **Benefícios:** tráfego criptografado (confidencialidade e integridade das requisições), autenticação do servidor pelo certificado e um endereço estável para a verificação externa do CD (`verify-https`).
+- **Evidências:** 7 (contêiner e logs do Caddy), 8 (rede `cloud-tasks-net`), 10 e 20 (`curl -i https://…/health` → `HTTP/2 200`).
+
+### Bônus 2 — Observabilidade com CloudWatch e SNS
+
+- **Métrica monitorada:** `StatusCheckFailed` (namespace `AWS/EC2`) da instância `computacao-nuvem-trab`, que indica falha nas verificações de status do sistema ou da instância.
+- **Alarme:** estatística *Máximo*, período de 5 min, condição `≥ 1` em 2 de 2 pontos de dados — o alarme entra em estado `ALARM` após cerca de 10 minutos de falha contínua, evitando alertas por oscilação momentânea.
+- **Notificação:** a ação do estado `ALARM` publica no tópico SNS `cloud-tasks-alertas`, cuja assinatura por e-mail entrega o aviso à equipe.
+- **Escopo:** o alarme monitora a saúde da **instância**; o endpoint `/health` da aplicação não é monitorado pelo CloudWatch (ele é verificado pelo CD a cada deploy).
+- **Benefícios:** detecção proativa de falhas de hardware, rede ou sistema operacional da EC2, sem depender de alguém acessar a aplicação.
+- **Evidências:** 15 (configuração da métrica e condição) e 16 (ação de notificação SNS por e-mail).
+
+### Bônus 3 — Rollback automático
+
+- **Preservação da versão anterior:** [`deploy.sh`](scripts/deploy.sh) baixa a nova imagem **antes** de interromper a atual, confirma que a versão em execução está saudável, renomeia-a para `cloud-tasks-api-previous` e apenas a para (sem removê-la). O deploy é abortado se já existir um contêiner `-previous` pendente.
+- **Detecção de falha:** a nova versão sobe no mesmo volume e é testada com `curl` em `/health` local (até 20 tentativas, intervalo de 2 s). Só é aceita se responder com sucesso.
+- **Restauração:** em qualquer erro, um `trap` remove o contêiner novo, renomeia `-previous` de volta para `cloud-tasks-api`, reinicia-o e valida seu `/health`. O script termina com código de erro, de modo que o job de CD falha e sinaliza o problema. Após o health check aprovado, o `trap` é desativado, impedindo rollback indevido por falha apenas na limpeza.
+- **Benefícios:** uma versão defeituosa não substitui a que funciona; a indisponibilidade fica restrita à janela da troca; os dados permanecem no volume.
+- **Evidências:** 17–20 — teste em ambiente isolado na EC2 (contêiner `cloud-tasks-api-test`, porta 18000, volume próprio) com falha forçada por `SIMULATE_FAILURE=1` numa cópia do script: saída *"Rollback concluído e validado."*, mesmo ID de contêiner restaurado, tarefa preservada e produção respondendo `200`.
 
 ## Situação atual e pendências
 
@@ -160,7 +190,7 @@ O banco SQLite fica em `/data/tasks.db`, montado no volume nomeado `cloud-tasks-
 
 ## Segurança e limitações
 
-Deploy didático: sem TLS, balanceamento, rollback automático ou alta disponibilidade; há alguns segundos de indisponibilidade na troca do contêiner. Não usar dados reais. O grupo `docker` na EC2 equivale a privilégios de root. O runner hospedado do GitHub não tem IP fixo: **SSH nunca deve ser liberado para `0.0.0.0/0`**; a solução de acesso depende de orientação docente (ver [CONFIGURACAO.md](docs/CONFIGURACAO.md)).
+Deploy didático: instância única, sem balanceamento nem alta disponibilidade; há alguns segundos de indisponibilidade na troca do contêiner. Não usar dados reais. O grupo `docker` na EC2 equivale a privilégios de root. SSH liberado apenas para um IP `/32` do administrador — **nunca `0.0.0.0/0`**; o deploy usa runner auto-hospedado, sem SSH vindo do GitHub (ver [CONFIGURACAO.md](docs/CONFIGURACAO.md)).
 
 
 ## Integrantes do Grupo
