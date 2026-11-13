@@ -1,24 +1,26 @@
-# Roteiro da apresentação (~4 min)
+# Roteiro da apresentação (~4 min 30 s)
 
-Legenda: ✅ pode ser gravado agora · ⏳ depende da EC2 / CD habilitado.
+Falas: **João** = João Vitor Jardim Machado Pontes · **Elter** = Elter Rodrigues · **Gabriel** = Gabriel Duarte Marques. Cada um apresenta a parte que desenvolveu (ver [relatório, seção 8](RELATORIO_FINAL.md#8-integrantes-e-distribuição-das-tarefas)).
 
-| Tempo | Bloco | O que mostrar | Status |
+| Tempo | Fala | Bloco | O que mostrar |
 |---|---|---|---|
-| 0:00–0:30 | Apresentação | Objetivo, API de tarefas e diagrama do [README](../README.md#arquitetura); integrantes e responsabilidades. | ✅ |
-| 0:30–1:15 | Pull Requests | PR #1 e PR #2: branch `feature/...`, revisão, checks verdes, merge na `main`. Destacar `test` e `build` aprovados e `publish` **ignorado** na PR. | ✅ |
-| 1:15–1:45 | GitHub Actions | Execuções de CI #5 e #8 na `main` com `publish` aprovado; execução do CD **ignorada** enquanto `DEPLOY_ENABLED` não está ativo. | ✅ |
-| 1:45–2:05 | GHCR | Pacote `ghcr.io/jpontesdev/computacao-em-nuvem` público com tags iguais ao SHA dos commits (`33ae081…`, `93d3754…`). | ✅ |
-| 2:05–3:00 | CD e API | Merge de uma nova mudança → CI → CD verde (passos SSH, deploy, verificação de `/health`); `curl http://<IP>/health` e `/tasks`; `docker inspect` mostrando o SHA implantado. | ⏳ |
-| 3:00–3:40 | Persistência | `POST /tasks` → recriar contêiner (`docker rm -f` + deploy) → `GET /tasks` mantém a tarefa. | ⏳ |
-| 3:40–4:00 | Encerramento | Segurança (SSH restrito, secrets, `DEPLOY_ENABLED`), dificuldades, custos e evidência de encerramento dos recursos AWS. | ⏳ (custos/encerramento) |
+| 0:00–0:25 | Elter | Abertura | Objetivo, integrantes e diagrama do [README](../README.md#arquitetura). |
+| 0:25–1:05 | João | Evolução da API | `DELETE /tasks/<id>` (204/404) e `PATCH` de título; testes em `tests/test_api.py`; `pytest` passando. |
+| 1:05–1:50 | Elter | PR e CI | [PR #1](https://github.com/jpontesdev/Computacao-em-Nuvem/pull/1): branch `feature/ci`, revisão, checks verdes (`test`, `build`; `publish` **ignorado**), merge. CI na `main` com `publish` e a tag SHA no pacote GHCR. |
+| 1:50–2:40 | Gabriel | Infraestrutura | EC2 `t3.micro`, Security Group (SSH só `/32`, 80/443 públicas), IP elástico, Caddy/HTTPS e runner auto-hospedado como serviço. |
+| 2:40–3:25 | Gabriel | CD e API | Merge → CI → CD verde (`deploy` + `verify-https`); `curl https://32-193-56-180.sslip.io/health` e `/tasks`; `docker inspect` mostrando o SHA implantado. |
+| 3:25–3:55 | Gabriel | Persistência | Tarefa criada com a imagem `ccd2664` continua listada após o CD #14 recriar o contêiner com `d8238ad`. |
+| 3:55–4:30 | Elter | Bônus e encerramento | Rollback automático (teste com falha forçada), alarme CloudWatch/SNS, dificuldades, custos e plano de encerramento dos recursos. |
 
 ## Preparação
 
-- Abrir antes as abas: PRs #1 e #2, Actions (CI e CD), página do pacote GHCR, terminal.
-- Para os blocos ⏳: EC2 provisionada, acesso do runner definido pelo professor, secrets configurados e `DEPLOY_ENABLED=true` (ver [CONFIGURACAO.md](CONFIGURACAO.md)).
-- Ter uma mudança pequena já em PR aprovada para fazer o merge ao vivo, ou gravar a execução previamente.
-- Após a gravação: desativar `DEPLOY_ENABLED` e encerrar os recursos AWS.
+- Abas abertas: PR #1, Actions (CI #17, CD #14), pacote GHCR, console EC2/Security Group, terminal SSH na instância, pasta [evidencias](evidencias/).
+- Confirmar antes: `DEPLOY_ENABLED=true`, runner online em *Settings → Actions → Runners*, `/health` respondendo 200.
+- Para o deploy ao vivo, deixar uma PR pequena já aprovada; se o tempo for curto, mostrar as execuções já gravadas (CD #13–#16).
+- Se a EC2 estiver indisponível no momento, usar as capturas de `docs/evidencias/` (10–20) para os blocos de CD, persistência e rollback.
 
-## Se a EC2 não estiver disponível
+## Após a apresentação
 
-Apresentar os blocos ✅, mostrar o trecho de `cd.yml` com as condições de execução e o mecanismo de persistência do [relatório](RELATORIO_FINAL.md#7-persistência), deixando claro que o deploy ainda não foi executado.
+1. Desativar `DEPLOY_ENABLED` e remover o runner auto-hospedado do repositório.
+2. Encerrar a instância, excluir o volume EBS, liberar o IP elástico e remover alarme e tópico SNS.
+3. Registrar o custo efetivo (Billing/Cost Explorer) e anexar a evidência de encerramento na seção 6 do relatório.

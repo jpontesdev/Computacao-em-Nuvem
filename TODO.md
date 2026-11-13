@@ -84,15 +84,15 @@
 
 ## 8. Documentação, evidências e apresentação (Dias 13–14) — *10 pts*
 
-- [ ] README atualizado (integrantes + instruções de uso) — instruções de uso prontas; faltam nomes dos integrantes
-- [ ] Relatório curto (máx. 4 páginas ou Markdown no repositório) contendo: — `docs/RELATORIO_FINAL.md` criado, com campos a preencher
+- [x] README atualizado (integrantes + instruções de uso)
+- [ ] Relatório curto (máx. 4 páginas ou Markdown no repositório) contendo: — `docs/RELATORIO_FINAL.md`; falta apenas o custo efetivo
   - [x] Diagrama da arquitetura/esteira
   - [x] Infraestrutura e portas utilizadas
-  - [x] Registro de custos e recursos utilizados — estrutura pronta; depende da EC2
+  - [ ] Registro de custos e recursos utilizados — recursos registrados; custo efetivo e encerramento após a apresentação
   - [x] Dificuldades encontradas
-  - [ ] Evidências da persistência de dados — mecanismo descrito; evidência depende da EC2
-  - [ ] Integrantes e distribuição das tarefas — campos criados; faltam nomes
-- [ ] Preparar vídeo de 3–5 min **ou** demonstração de até 5 min mostrando PR, Actions e API funcionando (a critério do docente) — roteiro em `docs/ROTEIRO_APRESENTACAO.md`; gravação pendente
+  - [x] Evidências da persistência de dados — registros da EC2 (evidências 11–14)
+  - [x] Integrantes e distribuição das tarefas
+- [ ] Preparar vídeo de 3–5 min **ou** demonstração de até 5 min mostrando PR, Actions e API funcionando (a critério do docente) — roteiro com divisão de falas pronto em `docs/ROTEIRO_APRESENTACAO.md`; gravação pendente
 - [ ] Garantir que todos os integrantes saibam explicar suas contribuições (Regras)
 
 ## 9. Encerramento de recursos (Dias 13–14)

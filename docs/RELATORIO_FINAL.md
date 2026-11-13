@@ -1,131 +1,116 @@
 # Relatório técnico — Esteira CI/CD da Cloud Tasks API
 
-**Disciplina:** Computação em Nuvem · **Repositório:** <https://github.com/jpontesdev/Computacao-em-Nuvem> · **Imagem:** `ghcr.io/jpontesdev/computacao-em-nuvem`
-
-> Situação deste relatório: CI e publicação no GHCR **comprovadas**; CD **implementado e desativado**; deploy na EC2 e persistência **ainda não validados** (infraestrutura não provisionada). Campos `[a preencher]` serão completados após o deploy.
+**Disciplina:** Computação em Nuvem · **Repositório:** <https://github.com/jpontesdev/Computacao-em-Nuvem> · **Imagem:** `ghcr.io/jpontesdev/computacao-em-nuvem` · **Aplicação:** <https://32-193-56-180.sslip.io/health>
 
 ## 1. Introdução
 
 O objetivo é transformar uma API Python que funciona localmente em um serviço entregue automaticamente na nuvem: cada mudança passa por Pull Request e testes, gera uma imagem Docker imutável identificada pelo SHA do commit e, quando integrada à `main`, é implantada em uma instância AWS EC2 com verificação de saúde.
 
-A **Cloud Tasks API** (Flask + SQLite, servida por Gunicorn) oferece `GET /`, `GET /health` (testa o banco; 200 ou 503), `GET /tasks`, `POST /tasks` (título não vazio, até 120 caracteres) e `PATCH /tasks/<id>` (campo `done` booleano). `DELETE /tasks/<id>` e a melhoria adicional estão sob responsabilidade de outro integrante.
+A **Cloud Tasks API** (Flask + SQLite, servida por Gunicorn) oferece `GET /`, `GET /health` (testa o banco; 200 ou 503), `GET /tasks`, `POST /tasks`, `PATCH /tasks/<id>` e `DELETE /tasks/<id>`. A evolução funcional do grupo foi o `DELETE` (204/404, 3 testes) e, como melhoria, a edição do título via `PATCH` (6 testes, incluindo validação e 404).
 
 ## 2. Arquitetura
 
 ```mermaid
 flowchart LR
-    A[Desenvolvimento] --> B[branch feature/...]
-    B --> C[Pull Request]
-    C --> D["GitHub Actions CI<br/>test + build"]
-    D -->|merge| E[main]
-    E --> F["CI publish<br/>GHCR :SHA"]
-    F --> G["GitHub Actions CD<br/>workflow_run"]
-    G -->|"SSH + deploy.sh"| H["AWS EC2<br/>Docker :80→8000<br/>volume cloud-tasks-data"]
-    H --> I["GET /health"]
-
-    classDef ok fill:#d4edda,stroke:#2e7d32,color:#1b1b1b
-    classDef off fill:#fff3cd,stroke:#b8860b,color:#1b1b1b
-    classDef pend fill:#eeeeee,stroke:#777,stroke-dasharray:5 5,color:#1b1b1b
-    class A,B,C,D,E,F ok
-    class G off
-    class H,I pend
+    A[branch feature/...] --> B[Pull Request]
+    B --> C["CI: test + build<br/>(sem publish)"]
+    C -->|merge| D[main]
+    D --> E["CI publish<br/>GHCR :SHA"]
+    E --> F["CD deploy<br/>runner self-hosted na EC2"]
+    F -->|deploy.sh| G["cloud-tasks-api<br/>127.0.0.1:8000<br/>volume cloud-tasks-data"]
+    F --> V["CD verify-https<br/>runner GitHub"]
+    U[Usuário] -->|"HTTPS 443"| P["Caddy :80/:443<br/>32-193-56-180.sslip.io"]
+    P --> G
+    V -->|"GET /health"| P
+    CW["CloudWatch<br/>StatusCheckFailed"] --> SNS["SNS<br/>cloud-tasks-alertas (e-mail)"]
 ```
 
-Legenda: **verde** — implementado e comprovado; **amarelo** — implementado, desativado por `DEPLOY_ENABLED`; **cinza tracejado** — planejado, sem infraestrutura provisionada.
+## 3. Infraestrutura, portas e segurança
 
-## 3. Infraestrutura e segurança
-
-| Componente | Configuração (conforme arquivos do repositório) |
+| Componente | Configuração |
 |---|---|
-| GitHub Actions — CI | `ci.yml`: `pull_request` e `push` em `main`. Permissão padrão `contents: read`; `packages: write` só no job `publish`, que tem `if` restrito a push na `main`. Concorrência por ref, cancelando execuções antigas apenas em PR. |
-| GHCR | Tag = SHA completo do commit; login com `GITHUB_TOKEN`; pacote público (pull sem credencial na EC2). |
-| GitHub Actions — CD | `cd.yml`: `workflow_run` da CI; `contents: read`; `environment: production`; `concurrency: cd-production` (sem cancelar deploy em andamento); `timeout-minutes: 15`; pula o deploy se o SHA não for mais o topo da `main`. |
-| AWS EC2 (planejada) | Ubuntu Server 24.04 LTS, **x86_64** (a imagem é amd64), IP público; Docker instalado por `scripts/setup-ec2-ubuntu.sh`. |
-| Docker | `python:3.12-slim`, usuário `appuser`, Gunicorn com 2 workers em `0.0.0.0:8000`; `--restart unless-stopped`. |
-| Portas | Contêiner `8000`; EC2 `80:8000` (`deploy.sh`); local `8080:8000` (`compose.yaml`). |
-| Volume | EC2: `cloud-tasks-data:/data`; local: `task_data:/data`; `DB_PATH=/data/tasks.db`. |
+| EC2 | `computacao-nuvem-trab`, `t3.micro`, us-east-1, **Amazon Linux 2023**, EBS raiz 8 GiB (sem criptografia) |
+| Rede | IP elástico `32.193.56.180`; domínio `32-193-56-180.sslip.io` (DNS que resolve o próprio IP) |
+| Docker | 25.0.14; `ec2-user` no grupo `docker`; rede bridge `cloud-tasks-net` compartilhada por Caddy e API |
+| Caddy | Contêiner `caddy:2`, portas 80/443 (TCP e UDP/HTTP3); HTTPS automático e redirecionamento HTTP → HTTPS |
+| API | Contêiner `cloud-tasks-api`, publicado só em `127.0.0.1:8000` (não exposto diretamente à internet) |
+| Runner | GitHub Actions auto-hospedado, serviço systemd executado como `ec2-user`, rótulo `deploy-ec2` |
 
-**Security Group planejado** (a confirmar com o professor):
+**Security Group**
 
-| Regra | Porta | Origem |
+| Direção | Tipo | Porta | Origem/Destino | Justificativa |
+|---|---|---|---|---|
+| Entrada | SSH | TCP 22 | Um único IP `/32` do administrador | Administração manual; **nunca `0.0.0.0/0`** |
+| Entrada | HTTP | TCP 80 | `0.0.0.0/0` | Redirecionamento automático do Caddy para HTTPS |
+| Entrada | HTTPS | TCP 443 | `0.0.0.0/0` | Acesso público à API |
+| Saída | Todo o tráfego | Todas | `0.0.0.0/0` | Runner (conexão de saída ao GitHub), `docker pull` do GHCR |
+
+**Acesso do deploy:** o runner hospedado do GitHub não tem IP fixo. Em vez de abrir SSH, o deploy roda num **runner auto-hospedado na própria EC2**, que só faz conexões de saída ao GitHub. Assim, nenhuma porta de entrada adicional é necessária.
+
+**Variáveis e segredos:** o CD usa apenas as variables `DEPLOY_ENABLED` (interruptor) e `APP_URL` (URL HTTPS validada por regex), além do `GITHUB_TOKEN` efêmero na CI. Configurações da instância ficam em `~/.cloud-tasks.env` (permissão 600), fora do repositório. Nenhuma chave, token ou dado real é versionado.
+
+## 4. Esteira e resultados
+
+| Etapa | Evidência | Link |
 |---|---|---|
-| HTTP | TCP 80 | Fontes permitidas para teste/avaliação `[a preencher]` |
-| SSH | TCP 22 | Somente IPs confiáveis (`/32`) e o acesso do runner definido pelo professor — **nunca `0.0.0.0/0`** |
+| CI em PR (`feature/ci`) | `test` e `build` aprovados; `publish` ignorado | [PR #1](https://github.com/jpontesdev/Computacao-em-Nuvem/pull/1) · [run #4](https://github.com/jpontesdev/Computacao-em-Nuvem/actions/runs/43163185365) |
+| CI em PRs seguintes | Aprovadas | [PR #2](https://github.com/jpontesdev/Computacao-em-Nuvem/pull/2) · [PR #3](https://github.com/jpontesdev/Computacao-em-Nuvem/pull/3) |
+| Publicação no GHCR | Imagem com tag = SHA após push na `main` | [CI #17](https://github.com/jpontesdev/Computacao-em-Nuvem/actions/runs/43424541858) (`d8238ad`) |
+| CD na EC2 | `deploy` + `verify-https` aprovados | [CD #13](https://github.com/jpontesdev/Computacao-em-Nuvem/actions/runs/43421523641) · [#14](https://github.com/jpontesdev/Computacao-em-Nuvem/actions/runs/43424701915) · [#15](https://github.com/jpontesdev/Computacao-em-Nuvem/actions/runs/43428664174) · [#16](https://github.com/jpontesdev/Computacao-em-Nuvem/actions/runs/43431044247) |
+| `/health` remoto | `HTTP/2 200`, `{"status":"ok"}`, `server: gunicorn`, `via: 1.1 Caddy` | evidência 10 |
 
-**Restrição de SSH:** o runner hospedado do GitHub não tem IP fixo. As alternativas previstas em [CONFIGURACAO.md](CONFIGURACAO.md) — runner auto-hospedado em rede permitida, acesso temporário supervisionado ou SSM — dependem de orientação docente.
+**Nova versão pela esteira:** o CD #13 implantou `ccd2664` e o CD #14 implantou `d8238ad` automaticamente após cada merge na `main`.
 
-**Secrets e variables** (nomes; nenhum valor versionado):
+**Rollback automático (bônus):** `deploy.sh` mantém o contêiner anterior como `cloud-tasks-api-previous` até a nova versão passar no health check; se falhar, remove a nova e restaura a anterior. Teste isolado (contêiner `cloud-tasks-api-test`, porta 18000, volume próprio), com falha forçada (`SIMULATE_FAILURE=1`): a saída foi *"Nova versão não passou no health check… Rollback concluído e validado."* (código de saída 1). O contêiner restaurado mantinha o mesmo ID anterior (`654fcaec…`) e a tarefa criada. A produção continuou respondendo 200 (evidências 17–20).
 
-| Nome | Tipo | Uso |
-|---|---|---|
-| `EC2_HOST` | secret | IP/DNS público da EC2 (validado por regex) |
-| `EC2_SSH_KEY` | secret | Chave privada dedicada ao deploy |
-| `EC2_KNOWN_HOSTS` | secret | Identidade do host, conferida com a fingerprint real (`StrictHostKeyChecking=yes`) |
-| `EC2_USER` | variable | Usuário SSH (`ubuntu`) |
-| `DEPLOY_ENABLED` | variable (repositório) | Interruptor do CD |
+**Observabilidade (bônus):** alarme CloudWatch em `AWS/EC2 StatusCheckFailed` (máximo ≥ 1 em 2 de 2 períodos de 5 min) notificando por e-mail o tópico SNS `cloud-tasks-alertas` (evidências 15–16).
 
-A chave é gravada em `$RUNNER_TEMP` com permissão restrita, usada com `IdentitiesOnly` e removida em um passo `always()`. Secrets são mascarados nos logs e nenhum passo usa `set -x`.
+## 5. Persistência
 
-**Proteção `DEPLOY_ENABLED`:** o job `deploy` só roda se a variável valer `true`. Ausente ou com outro valor, o job é **ignorado** (não falha), preservando a CI e a publicação no GHCR.
+O SQLite fica em `/data/tasks.db`, no volume nomeado `cloud-tasks-data`. A cada deploy o contêiner é substituído, mas o volume é reaproveitado.
 
-## 4. Resultados comprovados
-
-| Evidência | Resultado | Referência |
-|---|---|---|
-| CI na PR #1 (`feature/ci`) | `test` e `build` aprovados; `publish` ignorado | <https://github.com/jpontesdev/Computacao-em-Nuvem/pull/1> |
-| CI na PR #2 (`feature/cd`) | `test` e `build` aprovados; `publish` ignorado | <https://github.com/jpontesdev/Computacao-em-Nuvem/pull/2> |
-| CI #5 — merge da PR #1 | `test`, `build` e `publish` aprovados; primeira publicação | `ghcr.io/jpontesdev/computacao-em-nuvem:33ae081e9fa00cfcacb790e5a12884986f9b0ac3` |
-| CI #8 — merge da PR #2 | Publicação após as melhorias do CD | `ghcr.io/jpontesdev/computacao-em-nuvem:93d3754574aa53e903de084e9251b744754b1231` |
-| CD após os merges | Ignorado corretamente (`DEPLOY_ENABLED` não definido) | [workflow CD](https://github.com/jpontesdev/Computacao-em-Nuvem/actions/workflows/cd.yml) |
-
-Links diretos das execuções #5 e #8: `[a preencher]`. Capturas de tela: `[a preencher]`.
-
-**Ainda não comprovado:** deploy na EC2, `/health` remoto, implantação de nova versão e persistência após recriar o contêiner.
-
-## 5. Custos e recursos
-
-A infraestrutura EC2 **ainda não foi provisionada** para este trabalho, por limitação de créditos AWS. Não há, até o momento, registro de custos a apresentar.
-
-| Item | Valor |
+| Passo | Registro na EC2 (13/11/2026) |
 |---|---|
-| Tipo de instância / região | `[a preencher]` |
-| Armazenamento (EBS) | `[a preencher]` |
-| Endereço IPv4 público | `[a preencher]` |
-| Período de utilização (início → encerramento) | `[a preencher]` |
-| Custo efetivo (Billing / Cost Explorer) | `[a preencher]` |
-| Evidência de encerramento (instância, EBS, IP) | `[a preencher]` |
+| Volume | `docker volume inspect cloud-tasks-data` → criado em `2026-11-13T12:08:13Z`, driver `local` |
+| Antes | `POST /tasks` (12:17 GMT) → `201`, `{"id":1,"title":"Persistencia antes do redeploy","done":false}`; contêiner `df02b251…`, imagem `:ccd2664…` |
+| Recriação | Merge na `main` → CI #17 → CD #14 recria o contêiner pela esteira |
+| Depois | Contêiner `44ffd58c…`, imagem `:d8238ad…`; `GET /tasks` → mesma tarefa `id 1` |
 
-## 6. Dificuldades e soluções
+Os dados só se perdem se o volume ou o disco da instância forem removidos (evidências 11–14).
+
+## 6. Custos e recursos
+
+| Recurso | Detalhe |
+|---|---|
+| EC2 | 1× `t3.micro`, us-east-1, Amazon Linux 2023 — `i-091df571945cd8ff1` |
+| EBS | 1 volume raiz de 8 GiB (`vol-0ee5d7ca913a3b77c`) |
+| IP elástico | `32.193.56.180` associado à instância |
+| CloudWatch / SNS | 1 alarme + 1 tópico com assinatura por e-mail |
+| GitHub | Actions (runners hospedados + 1 auto-hospedado) e GHCR público — sem custo AWS |
+| Período | Início em 12/11/2026 (associação do EBS às 12:48 BRT); término após a apresentação |
+| Custo efetivo | **Pendente** — registrar o valor do Billing/Cost Explorer após o encerramento |
+| Encerramento | **Pendente** — encerrar instância, excluir EBS, liberar IP elástico, remover alarme/tópico e o runner do repositório; anexar evidência |
+
+## 7. Dificuldades e soluções
 
 | Dificuldade | Solução adotada |
 |---|---|
-| Computador da faculdade sem Docker instalado | O build Docker é validado pelo job `build` da CI em cada PR, sem depender da máquina local. |
-| CD existente antes da EC2 | Interruptor `DEPLOY_ENABLED`: o CD é ignorado sem falhar, mantendo CI e GHCR automáticos. |
-| SSH a partir de runner sem IP fixo | SSH nunca aberto para `0.0.0.0/0`; `known_hosts` obrigatório; método de acesso aguardando orientação docente. |
-| Limitação de créditos AWS | Esteira preparada e validada até o GHCR; provisionamento adiado para o período de demonstração. |
-| Robustez do CD (PR #2) | `concurrency` para deploys serializados; descarte de deploy de commit desatualizado; timeouts em SSH e `curl`; `/health` com tentativas limitadas (local e externa) e falha do job se não saudável; chave SSH em diretório temporário removido ao final. |
+| Runner hospedado do GitHub sem IP fixo vs. SSH restrito | Runner auto-hospedado na EC2 (só conexões de saída); SSH apenas do IP `/32` do administrador |
+| CD criado antes da infraestrutura existir | Interruptor `DEPLOY_ENABLED`: o CD foi ignorado sem falhar até a EC2 ficar pronta |
+| HTTPS sem domínio próprio | `sslip.io` resolvendo o IP elástico + Caddy com certificado automático |
+| IP público muda ao reiniciar a instância | IP elástico associado |
+| Risco de rollback indevido se a limpeza do contêiner anterior falhasse após um deploy saudável | Trap de rollback desativado logo após o health check; falha de limpeza apenas reportada (commit `5e333c3`) |
+| Computador da faculdade sem Docker | Build validado pelo job `build` da CI em cada PR |
+| Créditos AWS limitados | Infraestrutura provisionada apenas no período de deploy/demonstração, instância `t3.micro` |
 
-## 7. Persistência
+## 8. Integrantes e distribuição das tarefas
 
-O SQLite fica em `/data/tasks.db`. O `deploy.sh` cria (de forma idempotente) o volume nomeado `cloud-tasks-data` e o monta em `/data`. A cada deploy o contêiner é removido com `docker rm -f` — que não remove volumes — e recriado com a nova imagem, reutilizando o mesmo volume. O diretório `/data` pertence ao usuário `appuser` na imagem, e essa permissão é herdada pelo volume na criação. Os dados só se perdem se o volume ou o disco da instância forem removidos.
-
-**Procedimento de evidência (a executar na EC2):** criar tarefa com `POST /tasks` → `docker rm -f cloud-tasks-api` → recriar com `deploy.sh` ou via nova versão pela esteira → `GET /tasks` deve listar a tarefa.
-
-| Evidência | Registro |
-|---|---|
-| Tarefa criada antes da recriação | `[a preencher]` |
-| Imagem/SHA antes e depois (`docker inspect`) | `[a preencher]` |
-| `GET /tasks` após a recriação | `[a preencher]` |
-| `docker volume inspect cloud-tasks-data` | `[a preencher]` |
-
-## 8. Integrantes
-
-| Integrante | Responsabilidades |
-|---|---|
-| `[nome]` | `[responsabilidades]` |
-| `[nome]` | Evolução funcional da API — `[detalhar]` |
-| `[nome, se houver]` | `[responsabilidades]` |
+| Integrante | Matrícula | Contribuições |
+|---|---|---|
+| João Vitor Jardim Machado Pontes | 22307063 | Criação do repositório; `DELETE /tasks/<id>`; melhoria `PATCH` de título; testes (`feature/DELETE`) |
+| Elter Rodrigues | 22309480 | Workflow de CI e publicação no GHCR (PR #1); robustez do CD (PR #2); README, relatório e roteiro (PR #3); checklist |
+| Gabriel Duarte Marques | 22303292 | EC2, Security Group, IP elástico, Docker e Caddy/TLS (`feature/part3-ec2`); runner auto-hospedado e CD; evidências de deploy e persistência; CloudWatch/SNS; rollback automático |
 
 ## 9. Conclusão
 
-Foi validado o trecho da esteira que não depende de infraestrutura paga: PRs executam testes e build sem publicar imagem; integrações na `main` publicam no GHCR imagens imutáveis identificadas pelo SHA; e o CD, já implementado com controles de segurança e confiabilidade, permanece desativado sem gerar falhas. Dependem da EC2 e da orientação do professor: definição do acesso SSH do runner, primeiro deploy automático, verificação remota de `/health`, demonstração de nova versão, prova de persistência e o registro de custos e encerramento dos recursos.
+A esteira cumpre o fluxo completo: PRs executam testes e build sem publicar; merges na `main` publicam imagens imutáveis por SHA no GHCR e disparam o deploy automático na EC2, validado por `/health` local e via HTTPS externo. A persistência após recriar o contêiner foi comprovada, e os bônus de TLS, observabilidade e rollback seguro foram implementados. Restam o registro do custo efetivo e a evidência de encerramento dos recursos, que serão feitos após a apresentação.
