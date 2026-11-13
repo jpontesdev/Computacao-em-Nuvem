@@ -13,8 +13,8 @@
 - [x] Rodar os testes localmente com `pytest`
 - [x] Construir e executar a aplicação com Docker localmente
 - [x] Atualizar o README com os integrantes (Req. 1)
-- [ ] Atualizar o README com instruções de uso (Req. 1)
-- [ ] Garantir que nenhuma chave privada, token ou dado real esteja versionado (Regras)
+- [x] Atualizar o README com instruções de uso (Req. 1)
+- [x] Garantir que nenhuma chave privada, token ou dado real esteja versionado (Regras) — varredura do repositório sem chaves/tokens; `.gitignore` bloqueia `*.pem`, `*.key`, `.env`, `*.db`
 
 ## 2. Evolução funcional da API (Dias 4–5) — *Evolução funcional com testes: 10 pts*
 
@@ -88,12 +88,11 @@
 - [ ] Relatório curto (máx. 4 páginas ou Markdown no repositório) contendo: — `docs/RELATORIO_FINAL.md`; falta apenas o custo efetivo
   - [x] Diagrama da arquitetura/esteira
   - [x] Infraestrutura e portas utilizadas
-  - [ ] Registro de custos e recursos utilizados — recursos registrados; custo efetivo e encerramento após a apresentação
+  - [ ] Registro de custos e recursos utilizados — recursos registrados;
   - [x] Dificuldades encontradas
   - [x] Evidências da persistência de dados — registros da EC2 (evidências 11–14)
   - [x] Integrantes e distribuição das tarefas
-- [ ] Preparar vídeo de 3–5 min **ou** demonstração de até 5 min mostrando PR, Actions e API funcionando (a critério do docente) — roteiro com divisão de falas pronto em `docs/ROTEIRO_APRESENTACAO.md`; gravação pendente
-- [ ] Garantir que todos os integrantes saibam explicar suas contribuições (Regras)
+- [X] Preparar vídeo de 3–5 min **ou** demonstração de até 5 min mostrando PR, Actions e API funcionando (a critério do docente) — `docs/evidencias/VIDEO_DE_DEMOSTRACAO_comp_nuvem.mp4`
 
 ## 9. Encerramento de recursos (Dias 13–14)
 
@@ -102,15 +101,15 @@
 
 ## 10. Entrega no Moodle
 
-- [ ] URL do repositório GitHub (com acesso concedido ao professor, se privado)
-- [ ] URL ou IP da aplicação (enquanto estiver disponível)
-- [ ] Link do Pull Request
-- [ ] Link de ao menos 1 run de CI aprovado
-- [ ] Link de ao menos 1 run de CD aprovado
-- [ ] README atualizado
-- [ ] Relatório curto
-- [ ] Integrantes e distribuição das tarefas
-- [ ] Vídeo ou demonstração
+- [X] URL do repositório GitHub (com acesso concedido ao professor, se privado)
+- [X] URL ou IP da aplicação (enquanto estiver disponível)
+- [X] Link do Pull Request
+- [X] Link de ao menos 1 run de CI aprovado
+- [X] Link de ao menos 1 run de CD aprovado
+- [x] README atualizado
+- [X] Relatório curto — `docs/RELATORIO_FINAL.md` pronto;
+- [x] Integrantes e distribuição das tarefas — README e relatório
+- [x] Vídeo ou demonstração — `docs/evidencias/VIDEO_DE_DEMOSTRACAO_comp_nuvem.mp4`
 
 ## 11. Bônus (opcional — até 10 pts, respeitando teto do docente)
 
