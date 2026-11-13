@@ -77,10 +77,10 @@
 ## 7. Validação e estabilização (Dias 11–12)
 
 - [x] Corrigir problemas encontrados na esteira — auditoria sem AWS (timeouts, concorrência, chave SSH em `$RUNNER_TEMP`); revisar após o primeiro deploy
-- [ ] Demonstrar a implantação de uma nova versão pela esteira
-- [ ] Validar resposta do `/health` na EC2 após o deploy
-- [ ] Demonstrar que os dados persistem após a recriação do contêiner (Req. 9)
-- [ ] Registrar evidências da persistência (prints/logs)
+- [x] Demonstrar a implantação de uma nova versão pela esteira
+- [x] Validar resposta do `/health` na EC2 após o deploy
+- [x] Demonstrar que os dados persistem após a recriação do contêiner (Req. 9)
+- [x] Registrar evidências da persistência (prints/logs)
 
 ## 8. Documentação, evidências e apresentação (Dias 13–14) — *10 pts*
 
